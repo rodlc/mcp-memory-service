@@ -118,10 +118,15 @@ if not os.getenv('DEBUG_MODE'):
         logging.getLogger(module_name).setLevel(logging.WARNING)
 
 class MemoryServer:
-    def __init__(self):
-        """Initialize the server with hardware-aware configuration."""
+    def __init__(self, enabled_tools: set = None):
+        """Initialize the server with hardware-aware configuration.
+
+        Args:
+            enabled_tools: Optional set of tool names to enable. If None, all tools are enabled.
+        """
         self.server = Server(SERVER_NAME)
         self.system_info = get_system_info()
+        self.enabled_tools = enabled_tools or set()
         
         # Initialize query time tracking
         self.query_times = deque(maxlen=50)  # Keep last 50 query times for averaging
@@ -2253,6 +2258,12 @@ class MemoryServer:
                 logger.info(f"Added {len(quality_tools)} quality system tools")
 
                 logger.info(f"Returning {len(tools)} tools")
+                # Filter tools if enabled_tools is specified
+                if self.enabled_tools:
+                    original_count = len(tools)
+                    tools = [t for t in tools if t.name in self.enabled_tools]
+                    logger.info(f"Filtered tools from {original_count} to {len(tools)}: {[t.name for t in tools]}")
+
                 return tools
             except Exception as e:
                 logger.error(f"Error in handle_list_tools: {str(e)}")
@@ -2948,8 +2959,12 @@ def _print_system_diagnostics(system_info: Any) -> None:
     print("================================================\n", file=sys.stdout, flush=True)
 
 
-async def async_main():
-    """Main async entry point for MCP Memory Service."""
+async def async_main(enabled_tools: set = None):
+    """Main async entry point for MCP Memory Service.
+
+    Args:
+        enabled_tools: Optional set of tool names to enable. If None, all tools are enabled.
+    """
     from .utils.startup_orchestrator import (
         StartupCheckOrchestrator,
         InitializationRetryManager,
@@ -2965,10 +2980,12 @@ async def async_main():
         _print_system_diagnostics(system_info)
 
     logger.info(f"Starting MCP Memory Service with storage backend: {STORAGE_BACKEND}")
+    if enabled_tools:
+        logger.info(f"Enabled tools filter: {sorted(enabled_tools)}")
 
     try:
         # Create server instance
-        memory_server = MemoryServer()
+        memory_server = MemoryServer(enabled_tools=enabled_tools)
 
         # Initialize with retry logic
         retry_manager = InitializationRetryManager(max_retries=2, timeout=30.0, retry_delay=2.0)
@@ -3022,6 +3039,19 @@ def _cleanup_on_shutdown():
 def main():
     import signal
     import atexit
+    import argparse
+
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description='MCP Memory Service')
+    parser.add_argument('--enabledTools', type=str, default='',
+                        help='Comma-separated list of tools to enable (e.g., store_memory,retrieve_memory)')
+    args = parser.parse_args()
+
+    # Parse enabled tools
+    enabled_tools = set()
+    if args.enabledTools:
+        enabled_tools = set(tool.strip() for tool in args.enabledTools.split(',') if tool.strip())
+        logger.info(f"Parsed enabled tools: {sorted(enabled_tools)}")
 
     # Register cleanup function for normal exit
     atexit.register(_cleanup_on_shutdown)
@@ -3042,7 +3072,7 @@ def main():
             if MCP_CLIENT == 'lm_studio':
                 print("MCP Memory Service starting in Docker mode", file=sys.stdout, flush=True)
 
-        asyncio.run(async_main())
+        asyncio.run(async_main(enabled_tools=enabled_tools if enabled_tools else None))
     except KeyboardInterrupt:
         logger.info("Shutting down gracefully (KeyboardInterrupt)...")
         _cleanup_on_shutdown()
