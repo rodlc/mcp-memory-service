@@ -13,7 +13,10 @@ PID_FILE="/tmp/mcp-memory-http-server.pid"
 START_TIME_FILE="/tmp/mcp-memory-http-server-start.time"
 LOG_FILE="/tmp/mcp-memory-http-server.log"
 ENV_FILE="$PROJECT_DIR/.env"
-HTTP_ENDPOINT="http://127.0.0.1:8000"
+
+# Get port from environment or default to 8000
+HTTP_PORT="${MCP_HTTP_PORT:-8000}"
+HTTP_ENDPOINT="http://127.0.0.1:${HTTP_PORT}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -76,10 +79,10 @@ get_server_start_time() {
     fi
 }
 
-# Function: Find process listening on port 8000
+# Function: Find process listening on configured port
 find_port_process() {
-    # Use lsof to find process listening on port 8000
-    lsof -ti:8000 2>/dev/null || true
+    # Use lsof to find process listening on configured port
+    lsof -ti:${HTTP_PORT} 2>/dev/null || true
 }
 
 # Function: Stop server
@@ -116,10 +119,10 @@ stop_server() {
         rm -f "$START_TIME_FILE"
     fi
 
-    # Also kill any orphaned processes listening on port 8000
+    # Also kill any orphaned processes listening on configured port
     local port_pids=$(find_port_process)
     if [ -n "$port_pids" ]; then
-        echo "Found orphaned process(es) on port 8000, killing..."
+        echo "Found orphaned process(es) on port ${HTTP_PORT}, killing..."
         for pid in $port_pids; do
             echo "  Killing PID: $pid"
             kill -9 "$pid" 2>/dev/null || true
@@ -138,7 +141,14 @@ start_server() {
     local VENV_PYTHON="$PROJECT_DIR/venv/bin/python"
     if [ ! -f "$VENV_PYTHON" ]; then
         echo "Warning: venv not found at $VENV_PYTHON, falling back to uv run"
-        VENV_PYTHON="uv run python"
+        # Use absolute path to uv to ensure launchd can find it
+        local UV_PATH="${HOME}/.local/bin/uv"
+        if [ -f "$UV_PATH" ]; then
+            VENV_PYTHON="$UV_PATH run python"
+        else
+            # Last resort: try system uv
+            VENV_PYTHON="uv run python"
+        fi
     fi
 
     if [ "$mode" = "foreground" ]; then
