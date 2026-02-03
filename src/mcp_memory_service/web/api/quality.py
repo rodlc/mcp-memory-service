@@ -141,11 +141,17 @@ async def rate_memory(
         memory.metadata['rating_history'] = rating_history[-10:]  # Keep last 10 ratings
 
         # Update memory in storage
-        await storage.update_memory_metadata(
+        success, message = await storage.update_memory_metadata(
             content_hash=content_hash,
-            updates=memory.metadata,
+            updates={'metadata': memory.metadata},
             preserve_timestamps=True
         )
+
+        if not success:
+            logger.error(f"Failed to persist rating for {content_hash}: {message}")
+            raise HTTPException(status_code=500, detail=f"Failed to persist rating: {message}")
+
+        logger.info(f"Rating persisted for {content_hash}: quality_score={new_quality_score}")
 
         rating_text = {-1: "thumbs down", 0: "neutral", 1: "thumbs up"}[request.rating]
 

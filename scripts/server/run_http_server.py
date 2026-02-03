@@ -26,6 +26,10 @@ import asyncio
 import tempfile
 import subprocess
 from datetime import datetime, timedelta
+import setproctitle
+
+# Set process title for better identification in ps/Activity Monitor
+setproctitle.setproctitle("mcp-memory-http")
 
 # Add the src directory to the Python path
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), 'src'))
