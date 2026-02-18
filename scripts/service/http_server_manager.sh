@@ -138,17 +138,14 @@ start_server() {
     cd "$PROJECT_DIR"
 
     # Use venv Python directly (avoids uv/.venv vs venv mismatch with Python 3.14)
-    local VENV_PYTHON="$PROJECT_DIR/venv/bin/python"
-    if [ ! -f "$VENV_PYTHON" ]; then
-        echo "Warning: venv not found at $VENV_PYTHON, falling back to uv run"
-        # Use absolute path to uv to ensure launchd can find it
-        local UV_PATH="${HOME}/.local/bin/uv"
-        if [ -f "$UV_PATH" ]; then
-            VENV_PYTHON="$UV_PATH run python"
-        else
-            # Last resort: try system uv
-            VENV_PYTHON="uv run python"
-        fi
+    local VENV_PYTHON=""
+    if [ -f "$PROJECT_DIR/.venv/bin/python" ]; then
+        VENV_PYTHON="$PROJECT_DIR/.venv/bin/python"
+    elif [ -f "$PROJECT_DIR/venv/bin/python" ]; then
+        VENV_PYTHON="$PROJECT_DIR/venv/bin/python"
+    else
+        echo "Error: No Python venv found at $PROJECT_DIR/{.venv,venv}" >&2
+        exit 1
     fi
 
     if [ "$mode" = "foreground" ]; then
