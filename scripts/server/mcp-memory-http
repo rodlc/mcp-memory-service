@@ -1,0 +1,3 @@
+#!/bin/bash
+# Wrapper for launchd — gives macOS a recognizable process name
+exec "$(dirname "$0")/../../.venv/bin/python" "$(dirname "$0")/run_http_server.py" "$@"
