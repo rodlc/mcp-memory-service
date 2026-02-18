@@ -1,0 +1,14 @@
+{
+  "timestamp": "2026-02-18T17:13:08.606Z",
+  "sessionId": "test-session",
+  "project": "submagic",
+  "memoriesLoaded": 7,
+  "recentCount": 4,
+  "gitCommits": 10,
+  "gitKeywords": [
+    "update",
+    "add",
+    "fix"
+  ],
+  "storageBackend": "sqlite-vec"
+}
