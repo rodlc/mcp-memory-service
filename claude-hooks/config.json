@@ -34,7 +34,7 @@
       "auto-generated"
     ],
     "maxMemoriesPerSession": 8,
-    "enableSessionConsolidation": true,
+    "enableSessionConsolidation": false,
     "injectAfterCompacting": false,
     "recentFirstMode": true,
     "recentMemoryRatio": 0.6,
