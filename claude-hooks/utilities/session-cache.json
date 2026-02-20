@@ -1,9 +1,9 @@
 {
-  "timestamp": "2026-02-20T18:22:12.095Z",
+  "timestamp": "2026-02-20T18:58:30.561Z",
   "sessionId": "test-session",
   "project": "Code",
-  "memoriesLoaded": 8,
-  "recentCount": 8,
+  "memoriesLoaded": 5,
+  "recentCount": 5,
   "gitCommits": 0,
   "gitKeywords": [],
   "storageBackend": "sqlite-vec"
