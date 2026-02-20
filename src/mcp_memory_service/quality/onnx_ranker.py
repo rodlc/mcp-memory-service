@@ -5,6 +5,7 @@ Uses ms-marco-MiniLM-L-6-v2 model for relevance scoring.
 Exports the model from transformers to ONNX format on first use.
 """
 
+import importlib.util
 import json
 import logging
 import os
@@ -27,50 +28,13 @@ except ImportError:
     ONNX_AVAILABLE = False
     logger.warning("ONNX Runtime not available. Install with: pip install onnxruntime")
 
-# Try to import transformers for model export
-try:
-    from transformers import AutoModelForSequenceClassification, AutoTokenizer, AutoModel, AutoConfig
-    import torch
-    from torch import nn
-    from huggingface_hub import PyTorchModelHubMixin
-    TRANSFORMERS_AVAILABLE = True
-except ImportError:
-    TRANSFORMERS_AVAILABLE = False
+# Check transformers/torch availability without importing (avoids loading ~500 MB at startup)
+TRANSFORMERS_AVAILABLE = (
+    importlib.util.find_spec("torch") is not None and
+    importlib.util.find_spec("transformers") is not None
+)
+if not TRANSFORMERS_AVAILABLE:
     logger.warning("Transformers not available. Install with: pip install transformers torch huggingface-hub")
-
-
-# Custom model class for NVIDIA DeBERTa quality classifier
-if TRANSFORMERS_AVAILABLE:
-    class QualityModel(nn.Module, PyTorchModelHubMixin):
-        """Custom model class for NVIDIA DeBERTa quality classifier."""
-        def __init__(self, config):
-            super(QualityModel, self).__init__()
-
-            # Load base model with snapshot path detection
-            base_model_name = config["base_model"]
-            cache_dir = Path.home() / '.cache/huggingface/hub' / f'models--{base_model_name.replace("/", "--")}/snapshots'
-            if cache_dir.exists():
-                snapshots = list(cache_dir.glob('*'))
-                if snapshots:
-                    base_model_path = str(snapshots[0])
-                    logger.info(f"Loading base model from cached snapshot: {base_model_path}")
-                    self.model = AutoModel.from_pretrained(base_model_path)
-                else:
-                    self.model = AutoModel.from_pretrained(base_model_name)
-            else:
-                self.model = AutoModel.from_pretrained(base_model_name)
-
-            self.dropout = nn.Dropout(config["fc_dropout"])
-            self.fc = nn.Linear(self.model.config.hidden_size, len(config["id2label"]))
-
-        def forward(self, input_ids, attention_mask):
-            features = self.model(
-                input_ids=input_ids, attention_mask=attention_mask
-            ).last_hidden_state
-            dropped = self.dropout(features)
-            outputs = self.fc(dropped)
-            # Return raw logits (not softmax) - softmax will be applied during inference
-            return outputs[:, 0, :]
 
 
 class ONNXRankerModel:
@@ -148,6 +112,39 @@ class ONNXRankerModel:
         if onnx_path.exists():
             logger.info(f"ONNX model already available at {onnx_path}")
             return
+
+        # Lazy imports: only load torch/transformers when actually exporting ONNX
+        from transformers import AutoModelForSequenceClassification, AutoTokenizer, AutoModel, AutoConfig
+        import torch
+        from torch import nn
+        from huggingface_hub import PyTorchModelHubMixin
+
+        class QualityModel(nn.Module, PyTorchModelHubMixin):
+            """Custom model class for NVIDIA DeBERTa quality classifier."""
+            def __init__(self, config):
+                super(QualityModel, self).__init__()
+                base_model_name = config["base_model"]
+                cache_dir = Path.home() / '.cache/huggingface/hub' / f'models--{base_model_name.replace("/", "--")}/snapshots'
+                if cache_dir.exists():
+                    snapshots = list(cache_dir.glob('*'))
+                    if snapshots:
+                        base_model_path = str(snapshots[0])
+                        logger.info(f"Loading base model from cached snapshot: {base_model_path}")
+                        self.model = AutoModel.from_pretrained(base_model_path)
+                    else:
+                        self.model = AutoModel.from_pretrained(base_model_name)
+                else:
+                    self.model = AutoModel.from_pretrained(base_model_name)
+                self.dropout = nn.Dropout(config["fc_dropout"])
+                self.fc = nn.Linear(self.model.config.hidden_size, len(config["id2label"]))
+
+            def forward(self, input_ids, attention_mask):
+                features = self.model(
+                    input_ids=input_ids, attention_mask=attention_mask
+                ).last_hidden_state
+                dropped = self.dropout(features)
+                outputs = self.fc(dropped)
+                return outputs[:, 0, :]
 
         # Create directory
         self.MODEL_PATH.mkdir(parents=True, exist_ok=True)
@@ -275,6 +272,9 @@ class ONNXRankerModel:
 
         if not onnx_path.exists():
             raise FileNotFoundError(f"ONNX model not found at {onnx_path}")
+
+        # Lazy import: only load transformers when initializing the ranker model
+        from transformers import AutoTokenizer
 
         # Initialize ONNX session
         logger.info(f"Loading ONNX ranker model with providers: {self._preferred_providers}")

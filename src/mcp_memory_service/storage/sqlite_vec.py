@@ -42,12 +42,11 @@ except ImportError:
     SQLITE_VEC_AVAILABLE = False
     logging.getLogger(__name__).warning("sqlite-vec not available. Install with: pip install sqlite-vec")
 
-# Import sentence transformers with fallback
-try:
-    from sentence_transformers import SentenceTransformer
-    SENTENCE_TRANSFORMERS_AVAILABLE = True
-except ImportError:
-    SENTENCE_TRANSFORMERS_AVAILABLE = False
+# Check sentence_transformers availability without importing (avoids loading torch at startup)
+import importlib.util as _importlib_util
+SENTENCE_TRANSFORMERS_AVAILABLE = _importlib_util.find_spec("sentence_transformers") is not None
+del _importlib_util
+if not SENTENCE_TRANSFORMERS_AVAILABLE:
     logging.getLogger(__name__).warning("sentence_transformers not available. Install for embedding support.")
 
 from .base import MemoryStorage
@@ -771,6 +770,9 @@ SOLUTIONS:
                 )
                 self.embedding_model = _HashEmbeddingModel(self.embedding_dimension)
                 return
+
+            # Lazy import: only load sentence_transformers when actually needed (ONNX not available)
+            from sentence_transformers import SentenceTransformer  # noqa: F401
 
             # Check cache first
             cache_key = self.embedding_model_name
