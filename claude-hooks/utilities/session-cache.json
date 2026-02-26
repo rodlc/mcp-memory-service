@@ -1,10 +1,14 @@
 {
-  "timestamp": "2026-02-26T15:09:49.571Z",
+  "timestamp": "2026-02-26T15:33:00.087Z",
   "sessionId": "test-session",
-  "project": "rodlecoent",
-  "memoriesLoaded": 0,
-  "recentCount": 7,
-  "gitCommits": 0,
-  "gitKeywords": [],
+  "project": "submagic",
+  "memoriesLoaded": 6,
+  "recentCount": 5,
+  "gitCommits": 10,
+  "gitKeywords": [
+    "analytics",
+    "fix",
+    "api"
+  ],
   "storageBackend": "local_service"
 }
