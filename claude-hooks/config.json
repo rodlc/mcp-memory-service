@@ -29,7 +29,7 @@
         "-s",
         "hybrid"
       ],
-      "serverWorkingDir": "/home/hkr/repositories/mcp-memory-service",
+      "serverWorkingDir": ".",
       "connectionTimeout": 2000,
       "toolCallTimeout": 3000
     },

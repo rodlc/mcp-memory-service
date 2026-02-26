@@ -3,8 +3,6 @@
  * Intelligently triggers memory awareness during conversations based on natural language patterns
  */
 
-const fs = require('fs');
-const path = require('path');
 const { TieredConversationMonitor } = require('../utilities/tiered-conversation-monitor');
 const { AdaptivePatternDetector } = require('../utilities/adaptive-pattern-detector');
 const { PerformanceManager } = require('../utilities/performance-manager');
@@ -506,6 +504,8 @@ module.exports = {
 };
 
 if (require.main === module) {
+    const fs = require('fs');
+    const path = require('path');
     let inputData = '';
     process.stdin.on('data', (chunk) => { inputData += chunk; });
     process.stdin.on('end', async () => {
@@ -536,7 +536,12 @@ if (require.main === module) {
             }
         };
 
-        await onMidConversation(context);
-        process.exit(0);
+        try {
+            await onMidConversation(context);
+            process.exit(0);
+        } catch (error) {
+            console.error('[Mid-Conversation Hook] Execution failed:', error.message);
+            process.exit(1);
+        }
     });
 }
