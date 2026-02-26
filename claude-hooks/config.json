@@ -1,10 +1,14 @@
 {
   "codeExecution": {
-    "enabled": true,
-    "timeout": 15000,
+    "enabled": false,
+    "timeout": 3000,
     "fallbackToMCP": true,
     "enableMetrics": true,
     "pythonPath": "python3"
+  },
+  "versionCheck": {
+    "checkPyPI": false,
+    "timeout": 2000
   },
   "memoryService": {
     "protocol": "auto",
@@ -13,8 +17,8 @@
     "http": {
       "endpoint": "http://127.0.0.1:4242",
       "apiKey": "VhOGAoUOE5_BMzu-phDORdyXHNMcDRBxvndK_Uop",
-      "healthCheckTimeout": 3000,
-      "useDetailedHealthCheck": true
+      "healthCheckTimeout": 1500,
+      "useDetailedHealthCheck": false
     },
     "mcp": {
       "serverCommand": [
@@ -103,7 +107,7 @@
   "hooks": {
     "sessionStart": {
       "enabled": true,
-      "timeout": 20000,
+      "timeout": 8000,
       "priority": "high"
     },
     "midConversation": {
@@ -124,19 +128,19 @@
   "gitAnalysis": {
     "enabled": true,
     "commitLookback": 14,
-    "maxCommits": 20,
+    "maxCommits": 10,
     "includeChangelog": true,
     "maxGitMemories": 3,
     "gitContextWeight": 1.2
   },
   "output": {
-    "verbose": true,
-    "showMemoryDetails": true,
+    "verbose": false,
+    "showMemoryDetails": false,
     "showProjectDetails": true,
     "showScoringDetails": false,
     "showRecencyInfo": true,
-    "showPhaseDetails": true,
-    "showGitAnalysis": true,
+    "showPhaseDetails": false,
+    "showGitAnalysis": false,
     "cleanMode": false,
     "style": "balanced",
     "showScoringBreakdown": false,
@@ -160,7 +164,7 @@
     "maxMemoriesPerTrigger": 5
   },
   "performance": {
-    "defaultProfile": "balanced",
+    "defaultProfile": "speed_focused",
     "enableMonitoring": true,
     "autoAdjust": true,
     "profiles": {
@@ -207,9 +211,9 @@
     "learningRate": 0.05
   },
   "logging": {
-    "level": "debug",
-    "enableDebug": true,
-    "logToFile": true,
+    "level": "warn",
+    "enableDebug": false,
+    "logToFile": false,
     "logFilePath": "./claude-hooks.log"
   }
 }

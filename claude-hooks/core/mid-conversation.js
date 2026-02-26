@@ -3,6 +3,8 @@
  * Intelligently triggers memory awareness during conversations based on natural language patterns
  */
 
+const fs = require('fs');
+const path = require('path');
 const { TieredConversationMonitor } = require('../utilities/tiered-conversation-monitor');
 const { AdaptivePatternDetector } = require('../utilities/adaptive-pattern-detector');
 const { PerformanceManager } = require('../utilities/performance-manager');
@@ -502,3 +504,39 @@ module.exports = {
         priority: 'high'
     }
 };
+
+if (require.main === module) {
+    let inputData = '';
+    process.stdin.on('data', (chunk) => { inputData += chunk; });
+    process.stdin.on('end', async () => {
+        let userMessage = '';
+        let workingDirectory = process.cwd();
+        try {
+            const parsed = JSON.parse(inputData);
+            userMessage = parsed.message || '';
+            workingDirectory = parsed.cwd || process.cwd();
+        } catch (e) {
+            // ignore parse errors
+        }
+
+        let config = {};
+        try {
+            const configPath = path.join(__dirname, '../config.json');
+            config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+        } catch (e) {
+            // use defaults
+        }
+
+        const context = {
+            userMessage,
+            workingDirectory,
+            config,
+            injectSystemMessage: async (message) => {
+                console.log(message);
+            }
+        };
+
+        await onMidConversation(context);
+        process.exit(0);
+    });
+}
