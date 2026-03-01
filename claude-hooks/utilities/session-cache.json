@@ -1,8 +1,8 @@
 {
-  "timestamp": "2026-03-01T14:10:18.752Z",
+  "timestamp": "2026-03-01T15:15:13.689Z",
   "sessionId": "test-session",
-  "project": "workspace",
-  "memoriesLoaded": 4,
+  "project": "core",
+  "memoriesLoaded": 0,
   "recentCount": 4,
   "gitCommits": 10,
   "gitKeywords": [
