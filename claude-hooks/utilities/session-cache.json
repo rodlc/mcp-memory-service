@@ -1,10 +1,14 @@
 {
-  "timestamp": "2026-02-28T19:24:53.941Z",
+  "timestamp": "2026-03-01T12:43:18.171Z",
   "sessionId": "test-session",
-  "project": "workspace",
-  "memoriesLoaded": 4,
+  "project": "dotfiles",
+  "memoriesLoaded": 6,
   "recentCount": 4,
   "gitCommits": 10,
-  "gitKeywords": [],
+  "gitKeywords": [
+    "session",
+    "sync",
+    "config"
+  ],
   "storageBackend": "local_service"
 }
