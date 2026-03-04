@@ -257,7 +257,7 @@ async def handle_tool_call(storage, tool_name: str, arguments: Dict[str, Any]) -
         if client_hostname:
             metadata["client_hostname"] = client_hostname
         
-        content_hash = generate_content_hash(content, metadata)
+        content_hash = generate_content_hash(content)
         
         memory = Memory(
             content=content,
