@@ -1,14 +1,10 @@
 {
-  "timestamp": "2026-03-07T19:25:42.461Z",
+  "timestamp": "2026-03-07T19:28:53.309Z",
   "sessionId": "test-session",
-  "project": "github-cicd",
-  "memoriesLoaded": 0,
-  "recentCount": 5,
-  "gitCommits": 9,
-  "gitKeywords": [
-    "mcp",
-    "config",
-    "fix"
-  ],
+  "project": "workspace",
+  "memoriesLoaded": 5,
+  "recentCount": 8,
+  "gitCommits": 10,
+  "gitKeywords": [],
   "storageBackend": "local_service"
 }
