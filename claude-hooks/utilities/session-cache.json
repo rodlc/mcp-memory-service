@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-08T16:02:52.251Z",
+  "timestamp": "2026-03-08T16:05:08.378Z",
   "sessionId": "test-session",
   "project": "konsigo",
   "memoriesLoaded": 6,
@@ -7,8 +7,7 @@
   "gitCommits": 10,
   "gitKeywords": [
     "fix",
-    "feat",
-    "config"
+    "feat"
   ],
   "storageBackend": "local_service"
 }
