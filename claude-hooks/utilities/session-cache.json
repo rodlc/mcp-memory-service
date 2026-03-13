@@ -1,13 +1,14 @@
 {
-  "timestamp": "2026-03-13T10:08:58.704Z",
+  "timestamp": "2026-03-13T11:04:45.865Z",
   "sessionId": "test-session",
-  "project": "submagic",
-  "memoriesLoaded": 6,
-  "recentCount": 5,
+  "project": "konsigo",
+  "memoriesLoaded": 8,
+  "recentCount": 8,
   "gitCommits": 10,
   "gitKeywords": [
-    "analytics",
-    "fix"
+    "fix",
+    "feat",
+    "version"
   ],
   "storageBackend": "local_service"
 }
