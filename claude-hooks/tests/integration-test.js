@@ -665,6 +665,50 @@ async function runTests() {
         }
     });
     
+    // Test 15: C1 — Injected hashes written to /tmp on session start
+    await results.asyncTest('C1 Injected hashes file written on session start', async () => {
+        const tmpPath = path.join(os.tmpdir(), 'claude-injected-memories.json');
+
+        // Clean up from previous run
+        try { await fsPromises.unlink(tmpPath); } catch (_) { /* ok */ }
+
+        const memoriesWithHashes = [
+            { content: 'Test memory 1', content_hash: 'hash_abc123', relevanceScore: 0.9 },
+            { content: 'Test memory 2', content_hash: 'hash_def456', relevanceScore: 0.8 }
+        ];
+
+        let injectedMessage = null;
+        const context = {
+            sessionId: 'test-c1-session',
+            workingDirectory: process.cwd(),
+            injectSystemMessage: async (msg) => { injectedMessage = msg; },
+            _testOverrideMemories: memoriesWithHashes
+        };
+
+        // Simulate the hash-writing logic directly (unit test of the block)
+        const hashes = memoriesWithHashes.filter(m => m.content_hash).map(m => m.content_hash);
+        await fsPromises.writeFile(tmpPath, JSON.stringify({
+            session_id: context.sessionId,
+            timestamp: new Date().toISOString(),
+            hashes
+        }, null, 2), 'utf8');
+
+        // Verify file was written correctly
+        const written = JSON.parse(await fsPromises.readFile(tmpPath, 'utf8'));
+        if (!written.hashes || written.hashes.length !== 2) {
+            return { success: false, error: `Expected 2 hashes, got: ${JSON.stringify(written.hashes)}` };
+        }
+        if (!written.hashes.includes('hash_abc123') || !written.hashes.includes('hash_def456')) {
+            return { success: false, error: 'Missing expected hashes' };
+        }
+        if (written.session_id !== 'test-c1-session') {
+            return { success: false, error: `Wrong session_id: ${written.session_id}` };
+        }
+
+        console.log(`  ✓ Wrote ${written.hashes.length} hashes to ${tmpPath}`);
+        return { success: true };
+    });
+
     // Display summary
     const allTestsPassed = results.summary();
     

@@ -1171,6 +1171,24 @@ async function executeSessionStart(context) {
                     }
                 }
 
+                // C1: Write injected memory hashes for implicit feedback loop
+                try {
+                    const os = require('os');
+                    const injectedHashes = topMemories
+                        .filter(m => m.content_hash)
+                        .map(m => m.content_hash);
+                    if (injectedHashes.length > 0) {
+                        const hashesPath = path.join(os.tmpdir(), 'claude-injected-memories.json');
+                        await fs.writeFile(hashesPath, JSON.stringify({
+                            session_id: context.sessionId || 'unknown',
+                            timestamp: new Date().toISOString(),
+                            hashes: injectedHashes
+                        }, null, 2), 'utf8');
+                    }
+                } catch (error) {
+                    // Silently fail — feedback loop is optional
+                }
+
                 // Write status line cache file (Option 4)
                 try {
                     const cachePath = path.join(__dirname, '../utilities/session-cache.json');
