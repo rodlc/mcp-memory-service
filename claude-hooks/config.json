@@ -137,7 +137,7 @@
     "verbose": false,
     "showMemoryDetails": false,
     "showProjectDetails": true,
-    "showScoringDetails": false,
+    "showScoringDetails": true,
     "showRecencyInfo": true,
     "showPhaseDetails": false,
     "showGitAnalysis": false,
@@ -164,7 +164,7 @@
     "maxMemoriesPerTrigger": 5
   },
   "performance": {
-    "defaultProfile": "speed_focused",
+    "defaultProfile": "balanced",
     "enableMonitoring": true,
     "autoAdjust": true,
     "profiles": {
