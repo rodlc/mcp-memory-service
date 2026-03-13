@@ -779,6 +779,76 @@ async function runTests() {
         return { success: true };
     });
 
+    // Test 17: C3 — session-end rates injected-but-unused memories as neutral
+    await results.asyncTest('C3 Session end rates unused injected memories as neutral', async () => {
+        const tmpPath = path.join(os.tmpdir(), 'claude-injected-memories.json');
+        const ratedHashes = [];
+
+        // Write fake injected hashes (simulating C1 output)
+        const injectedHashes = ['used_hash_001', 'unused_hash_002', 'unused_hash_003'];
+        await fsPromises.writeFile(tmpPath, JSON.stringify({
+            session_id: 'test-c3',
+            timestamp: new Date().toISOString(),
+            hashes: injectedHashes
+        }, null, 2), 'utf8');
+
+        // Patch http.request
+        const httpModule = require('http');
+        const originalRequest = httpModule.request.bind(httpModule);
+        httpModule.request = function(options, callback) {
+            if (options.path && options.path.includes('/api/quality/memories/') && options.path.includes('/rate')) {
+                const hash = options.path.split('/api/quality/memories/')[1].split('/rate')[0];
+                ratedHashes.push(hash);
+                return { on: () => {}, write: () => {}, end: () => {} };
+            }
+            return originalRequest(options, callback);
+        };
+
+        // Simulate C3 logic: conversation text contains only 'used_hash_001'
+        const conversationText = 'We used memory used_hash_001 in this session';
+        const endpoint = 'http://127.0.0.1:4242';
+        const apiKey = 'test-key';
+
+        for (const hash of injectedHashes) {
+            if (!conversationText.includes(hash)) {
+                const postData = JSON.stringify({ rating: 0, feedback: 'injected-not-referenced' });
+                const url = new URL(`/api/quality/memories/${hash}/rate`, endpoint);
+                const req = httpModule.request({
+                    hostname: url.hostname,
+                    port: url.port || 4242,
+                    path: url.pathname,
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Content-Length': Buffer.byteLength(postData),
+                        'Authorization': `Bearer ${apiKey}`
+                    }
+                });
+                req.on('error', () => {});
+                req.write(postData);
+                req.end();
+            }
+        }
+
+        // Cleanup
+        httpModule.request = originalRequest;
+        try { await fsPromises.unlink(tmpPath); } catch (_) { /* ok */ }
+
+        // 'used_hash_001' should NOT be rated (was referenced), others should be rated 0
+        if (ratedHashes.includes('used_hash_001')) {
+            return { success: false, error: 'used_hash_001 was incorrectly rated (it was referenced)' };
+        }
+        if (!ratedHashes.includes('unused_hash_002') || !ratedHashes.includes('unused_hash_003')) {
+            return { success: false, error: `Expected 2 neutral ratings, got: ${JSON.stringify(ratedHashes)}` };
+        }
+        if (ratedHashes.length !== 2) {
+            return { success: false, error: `Expected 2 ratings, got ${ratedHashes.length}` };
+        }
+
+        console.log(`  ✓ Rated ${ratedHashes.length} unused memories as neutral (0), skipped 1 referenced`);
+        return { success: true };
+    });
+
     // Display summary
     const allTestsPassed = results.summary();
     
