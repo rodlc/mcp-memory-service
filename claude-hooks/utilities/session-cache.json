@@ -1,12 +1,13 @@
 {
-  "timestamp": "2026-03-13T11:34:05.104Z",
+  "timestamp": "2026-03-13T13:28:15.747Z",
   "sessionId": "test-session",
-  "project": "workspace",
-  "memoriesLoaded": 7,
-  "recentCount": 8,
+  "project": "mockups",
+  "memoriesLoaded": 2,
+  "recentCount": 5,
   "gitCommits": 10,
   "gitKeywords": [
-    "fix",
+    "version",
+    "css",
     "config"
   ],
   "storageBackend": "local_service"
