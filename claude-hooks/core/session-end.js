@@ -451,7 +451,48 @@ async function onSessionEnd(context) {
         } else {
             console.warn('[Memory Hook] Failed to store session consolidation:', result.error || 'Unknown error');
         }
-        
+
+        // C3: Rate injected-but-unused memories as neutral (implicit decay signal)
+        try {
+            const os = require('os');
+            const hashesPath = require('path').join(os.tmpdir(), 'claude-injected-memories.json');
+            const injectedData = JSON.parse(await fs.readFile(hashesPath, 'utf8'));
+            const injectedHashes = injectedData.hashes || [];
+
+            if (injectedHashes.length > 0) {
+                const conversationText = (context.conversation?.messages || [])
+                    .map(m => m.content || '').join('\n');
+
+                for (const hash of injectedHashes) {
+                    if (!conversationText.includes(hash)) {
+                        // Fire & forget neutral rating (not punitive — just a weak decay signal)
+                        const postData = JSON.stringify({ rating: 0, feedback: 'injected-not-referenced' });
+                        const url = new URL(`/api/quality/memories/${hash}/rate`, endpoint);
+                        const req = http.request({
+                            hostname: url.hostname,
+                            port: url.port || 4242,
+                            path: url.pathname,
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Content-Length': Buffer.byteLength(postData),
+                                'Authorization': `Bearer ${apiKey}`
+                            }
+                        });
+                        req.on('error', () => {});
+                        req.write(postData);
+                        req.end();
+                    }
+                }
+                console.log(`[Memory Hook] C3 feedback: rated ${injectedHashes.filter(h => !conversationText.includes(h)).length} unused memories as neutral`);
+            }
+
+            // Clean up temp file
+            await fs.unlink(hashesPath).catch(() => {});
+        } catch (_) {
+            // Silently fail — feedback loop is optional
+        }
+
     } catch (error) {
         console.error('[Memory Hook] Error in session end:', error.message);
         // Fail gracefully - don't prevent session from ending
