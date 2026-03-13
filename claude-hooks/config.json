@@ -37,7 +37,7 @@
       "claude-code",
       "auto-generated"
     ],
-    "maxMemoriesPerSession": 8,
+    "maxMemoriesPerSession": 5,
     "enableSessionConsolidation": false,
     "injectAfterCompacting": false,
     "recentFirstMode": true,
