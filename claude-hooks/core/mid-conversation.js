@@ -181,6 +181,32 @@ class MidConversationHook {
                 }
             );
 
+            // C2: Auto-rate top retrieved memories as used (implicit positive signal, fire & forget)
+            try {
+                const endpoint = this.config.memoryService?.http?.endpoint || 'http://127.0.0.1:4242';
+                const apiKey = this.config.memoryService?.http?.apiKey || '';
+                for (const memory of scoredMemories.slice(0, 3)) {
+                    if (memory.content_hash) {
+                        const postData = JSON.stringify({ rating: 1, feedback: 'mid-conversation retrieval' });
+                        const url = new URL(`/api/quality/memories/${memory.content_hash}/rate`, endpoint);
+                        const req = require('http').request({
+                            hostname: url.hostname,
+                            port: url.port || 4242,
+                            path: url.pathname,
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Content-Length': Buffer.byteLength(postData),
+                                'Authorization': `Bearer ${apiKey}`
+                            }
+                        });
+                        req.on('error', () => {}); // Fire & forget — never fail the trigger
+                        req.write(postData);
+                        req.end();
+                    }
+                }
+            } catch (_) { /* non-blocking */ }
+
             // Record successful trigger
             this.analytics.triggersExecuted++;
 
