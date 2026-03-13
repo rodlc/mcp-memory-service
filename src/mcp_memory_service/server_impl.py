@@ -2392,6 +2392,9 @@ class MemoryServer:
                 elif name == "analyze_quality_distribution":
                     logger.info("Calling handle_analyze_quality_distribution")
                     return await self.handle_analyze_quality_distribution(arguments)
+                elif name == "get_memory_by_hash":
+                    logger.info("Calling handle_get_memory_by_hash")
+                    return await self.handle_get_memory_by_hash(arguments)
                 else:
                     logger.warning(f"Unknown tool requested: {name}")
                     raise ValueError(f"Unknown tool: {name}")
@@ -2556,6 +2559,11 @@ class MemoryServer:
         """Analyze quality distribution (delegates to handler)."""
         from .server.handlers import quality as quality_handlers
         return await quality_handlers.handle_analyze_quality_distribution(self, arguments)
+
+    async def handle_get_memory_by_hash(self, arguments: dict) -> List[types.TextContent]:
+        """Retrieve memory by content hash (delegates to handler)."""
+        from .server.handlers import memory as memory_handlers
+        return await memory_handlers.handle_get_memory_by_hash(self, arguments)
 
     # ============================================================
     # Test Compatibility Wrapper Methods
