@@ -1,8 +1,8 @@
 {
   "sessions": [
     {
-      "id": "test-session-1759496420980",
-      "startTime": "2025-10-03T13:00:20.980Z",
+      "id": "test-session-1773420558558",
+      "startTime": "2026-03-13T16:49:18.558Z",
       "endTime": null,
       "projectContext": {
         "name": "mcp-memory-service",
@@ -29,7 +29,7 @@
       "memoriesCreated": [],
       "conversationSummary": null,
       "outcome": null,
-      "threadId": "thread-8e3c1ef4f0d194a7",
+      "threadId": "thread-fd33893aab32ccd4",
       "parentSessionId": null,
       "childSessionIds": [],
       "status": "active"
@@ -231,12 +231,40 @@
       "topics": [],
       "outcomes": [],
       "status": "active"
+    },
+    {
+      "id": "thread-fd33893aab32ccd4",
+      "createdAt": "2026-03-13T16:49:18.559Z",
+      "projectContext": {
+        "name": "mcp-memory-service",
+        "type": "Multi-language Project",
+        "languages": [
+          "javascript",
+          "python"
+        ],
+        "frameworks": [
+          "node.js",
+          "fastapi"
+        ],
+        "tools": [
+          "git",
+          "npm",
+          "pip"
+        ],
+        "confidence": 0.95
+      },
+      "sessionIds": [
+        "test-session-1773420558558"
+      ],
+      "topics": [],
+      "outcomes": [],
+      "status": "active"
     }
   ],
   "projectSessions": {
     "mcp-memory-service": [
-      "test-session-1759496420980"
+      "test-session-1773420558558"
     ]
   },
-  "lastSaved": "2025-10-03T13:00:20.980Z"
+  "lastSaved": "2026-03-13T16:49:18.559Z"
 }
