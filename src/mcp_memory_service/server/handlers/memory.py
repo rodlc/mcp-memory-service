@@ -66,11 +66,11 @@ async def handle_store_memory(server, arguments: dict) -> List[types.TextContent
             # Chunked response - multiple memories created
             num_chunks = len(result["memories"])
             original_hash = result.get("original_hash", "unknown")
-            message = f"Successfully stored {num_chunks} memory chunks (original hash: {original_hash[:8]}...)"
+            message = f"Successfully stored {num_chunks} memory chunks (original hash: {original_hash})"
         else:
             # Single memory response
             memory_hash = result["memory"]["content_hash"]
-            message = f"Memory stored successfully (hash: {memory_hash[:8]}...)"
+            message = f"Memory stored successfully (hash: {memory_hash})"
 
         return [types.TextContent(type="text", text=message)]
 
@@ -787,6 +787,58 @@ async def handle_delete_by_timeframe(server, arguments: dict) -> List[types.Text
             type="text",
             text=f"Error deleting memories: {str(e)}"
         )]
+
+
+async def handle_get_memory_by_hash(server, arguments: dict) -> List[types.TextContent]:
+    """Retrieve a specific memory by its content hash (full or partial prefix)."""
+    content_hash = arguments.get("content_hash")
+
+    if not content_hash:
+        return [types.TextContent(type="text", text="Error: content_hash is required")]
+
+    try:
+        await server._ensure_storage_initialized()
+
+        result = await server.memory_service.get_memory_by_hash(content_hash)
+
+        if not result.get("found"):
+            error = result.get("error")
+            if error:
+                return [types.TextContent(type="text", text=f"Error: {error}")]
+            return [types.TextContent(type="text", text=f"No memory found with hash: {content_hash}")]
+
+        memory = result["memory"]
+        memory_info = ["Memory found:"]
+
+        created_at = memory.get("created_at")
+        if created_at:
+            try:
+                if isinstance(created_at, (int, float)):
+                    dt = datetime.fromtimestamp(created_at)
+                else:
+                    dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                memory_info.append(f"Timestamp: {dt.strftime('%Y-%m-%d %H:%M:%S')}")
+            except (ValueError, TypeError):
+                memory_info.append(f"Timestamp: {created_at}")
+
+        memory_info.extend([
+            f"Content: {memory['content']}",
+            f"Hash: {memory['content_hash']}",
+        ])
+
+        tags = memory.get("tags", [])
+        if tags:
+            memory_info.append(f"Tags: {', '.join(tags)}")
+
+        memory_type = memory.get("memory_type")
+        if memory_type:
+            memory_info.append(f"Type: {memory_type}")
+
+        return [types.TextContent(type="text", text="\n".join(memory_info))]
+
+    except Exception as e:
+        logger.error(f"Error getting memory by hash: {str(e)}\n{traceback.format_exc()}")
+        return [types.TextContent(type="text", text=f"Error getting memory by hash: {str(e)}")]
 
 
 async def handle_delete_before_date(server, arguments: dict) -> List[types.TextContent]:

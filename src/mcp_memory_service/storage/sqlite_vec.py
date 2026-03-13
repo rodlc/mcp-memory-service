@@ -1469,29 +1469,44 @@ SOLUTIONS:
             return 0
     
     async def get_by_hash(self, content_hash: str) -> Optional[Memory]:
-        """Get a memory by its content hash."""
+        """Get a memory by its content hash (full or partial prefix)."""
         try:
             if not self.conn:
                 return None
-            
-            cursor = self.conn.execute('''
-                SELECT content_hash, content, tags, memory_type, metadata,
-                       created_at, updated_at, created_at_iso, updated_at_iso
-                FROM memories WHERE content_hash = ? AND deleted_at IS NULL
-            ''', (content_hash,))
-            
-            row = cursor.fetchone()
-            if not row:
-                return None
-            
+
+            if len(content_hash) < 64:
+                # Partial prefix — use LIKE, fetch up to 2 rows to detect ambiguity
+                cursor = self.conn.execute('''
+                    SELECT content_hash, content, tags, memory_type, metadata,
+                           created_at, updated_at, created_at_iso, updated_at_iso
+                    FROM memories WHERE content_hash LIKE ? AND deleted_at IS NULL
+                    LIMIT 2
+                ''', (content_hash + '%',))
+                rows = cursor.fetchmany(2)
+                if not rows:
+                    return None
+                if len(rows) > 1:
+                    logger.warning(f"Ambiguous hash prefix '{content_hash}': {len(rows)} matches")
+                    return None
+                row = rows[0]
+            else:
+                # Full hash — exact match
+                cursor = self.conn.execute('''
+                    SELECT content_hash, content, tags, memory_type, metadata,
+                           created_at, updated_at, created_at_iso, updated_at_iso
+                    FROM memories WHERE content_hash = ? AND deleted_at IS NULL
+                ''', (content_hash,))
+                row = cursor.fetchone()
+                if not row:
+                    return None
+
             content_hash, content, tags_str, memory_type, metadata_str = row[:5]
             created_at, updated_at, created_at_iso, updated_at_iso = row[5:]
-            
-            # Parse tags and metadata
+
             tags = [tag.strip() for tag in tags_str.split(",") if tag.strip()] if tags_str else []
             metadata = self._safe_json_loads(metadata_str, "memory_retrieval")
-            
-            memory = Memory(
+
+            return Memory(
                 content=content,
                 content_hash=content_hash,
                 tags=tags,
@@ -1502,8 +1517,6 @@ SOLUTIONS:
                 created_at_iso=created_at_iso,
                 updated_at_iso=updated_at_iso
             )
-            
-            return memory
 
         except Exception as e:
             logger.error(f"Failed to get memory by hash {content_hash}: {str(e)}")

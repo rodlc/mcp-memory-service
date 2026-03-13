@@ -2257,6 +2257,33 @@ class MemoryServer:
                 tools.extend(quality_tools)
                 logger.info(f"Added {len(quality_tools)} quality system tools")
 
+                tools.append(types.Tool(
+                    name="get_memory_by_hash",
+                    description="""Retrieve a specific memory by its content hash.
+
+                    Accepts the full 64-char hash returned by store_memory, or a short
+                    prefix (≥8 chars). Returns the memory if found, or a not-found message.
+
+                    Example:
+                    {
+                        "content_hash": "a3f9c2d1e8b4..."
+                    }""",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "content_hash": {
+                                "type": "string",
+                                "description": "Full 64-char hash or short prefix (≥8 chars) returned by store_memory."
+                            }
+                        },
+                        "required": ["content_hash"]
+                    },
+                    annotations=types.ToolAnnotations(
+                        title="Get Memory by Hash",
+                        readOnlyHint=True,
+                    ),
+                ))
+
                 logger.info(f"Returning {len(tools)} tools")
                 # Filter tools if enabled_tools is specified
                 if self.enabled_tools:
