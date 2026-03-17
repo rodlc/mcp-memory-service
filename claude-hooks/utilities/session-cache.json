@@ -1,14 +1,10 @@
 {
-  "timestamp": "2026-03-16T16:31:52.977Z",
+  "timestamp": "2026-03-17T08:46:38.787Z",
   "sessionId": "test-session",
-  "project": "konsigo",
-  "memoriesLoaded": 5,
-  "recentCount": 5,
-  "gitCommits": 10,
-  "gitKeywords": [
-    "dashboard",
-    "fix",
-    "refactor"
-  ],
+  "project": "newsgester",
+  "memoriesLoaded": 2,
+  "recentCount": 3,
+  "gitCommits": 0,
+  "gitKeywords": [],
   "storageBackend": "local_service"
 }
