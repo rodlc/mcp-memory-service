@@ -1,14 +1,14 @@
 {
-  "timestamp": "2026-03-17T10:14:46.841Z",
+  "timestamp": "2026-03-17T11:43:07.572Z",
   "sessionId": "test-session",
-  "project": "newsgester",
-  "memoriesLoaded": 1,
+  "project": "submagic",
+  "memoriesLoaded": 4,
   "recentCount": 3,
-  "gitCommits": 3,
+  "gitCommits": 10,
   "gitKeywords": [
-    "fix",
+    "docs",
     "chore",
-    "feat"
+    "memory"
   ],
   "storageBackend": "local_service"
 }
