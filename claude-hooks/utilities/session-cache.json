@@ -1,14 +1,13 @@
 {
-  "timestamp": "2026-03-17T18:07:21.388Z",
+  "timestamp": "2026-03-17T18:12:59.908Z",
   "sessionId": "test-session",
-  "project": "newsgester",
-  "memoriesLoaded": 1,
-  "recentCount": 3,
+  "project": "workspace",
+  "memoriesLoaded": 4,
+  "recentCount": 4,
   "gitCommits": 10,
   "gitKeywords": [
-    "fix",
-    "feat",
-    "layout"
+    "chore",
+    "mcp"
   ],
   "storageBackend": "local_service"
 }
