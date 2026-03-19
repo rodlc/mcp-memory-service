@@ -1252,6 +1252,12 @@ Features:
     installer.info(f"Target hooks directory: {installer.claude_hooks_dir}")
     installer.info(f"Platform: {installer.platform_name}")
 
+    # Guard: refuse to overwrite symlink-managed hooks
+    core_dir = installer.claude_hooks_dir / "core"
+    if core_dir.exists() and any(f.is_symlink() for f in core_dir.iterdir()):
+        installer.error("Hooks are managed via symlinks (dotfiles). Use df-install instead.")
+        sys.exit(1)
+
     # Handle special modes first
     if args.uninstall:
         if installer.uninstall():
