@@ -1,14 +1,14 @@
 {
-  "timestamp": "2026-03-20T19:20:36.969Z",
+  "timestamp": "2026-03-22T10:21:36.329Z",
   "sessionId": "test-session",
-  "project": "konsigo",
-  "memoriesLoaded": 5,
+  "project": "workspace",
+  "memoriesLoaded": 3,
   "recentCount": 2,
   "gitCommits": 10,
   "gitKeywords": [
-    "phase",
-    "css",
-    "feat"
+    "fix",
+    "parsing",
+    "memory"
   ],
   "storageBackend": "local_service"
 }
