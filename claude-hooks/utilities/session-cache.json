@@ -1,12 +1,14 @@
 {
-  "timestamp": "2026-03-23T15:18:08.714Z",
+  "timestamp": "2026-03-23T17:34:35.409Z",
   "sessionId": "test-session",
-  "project": "workspace",
-  "memoriesLoaded": 4,
+  "project": "submagic",
+  "memoriesLoaded": 5,
   "recentCount": 4,
   "gitCommits": 10,
   "gitKeywords": [
-    "chore"
+    "docs",
+    "chore",
+    "memory"
   ],
   "storageBackend": "local_service"
 }
