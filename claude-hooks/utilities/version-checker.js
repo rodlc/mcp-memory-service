@@ -181,10 +181,28 @@ function formatVersionDisplay(versionInfo, colors) {
     return `${colors.CYAN}📦 Version${colors.RESET} ${colors.DIM}→${colors.RESET} ${colors.BRIGHT}${local}${colors.RESET} ${statusLabel}${pypiDisplay}`;
 }
 
+/**
+ * Detect how Claude Code was installed
+ * @returns {'mise'|'npm'} Install method
+ */
+function getClaudeCodeInstallMethod() {
+    try {
+        const { execSync } = require('child_process');
+        const claudePath = execSync('which claude', { encoding: 'utf8' }).trim();
+        if (claudePath.includes('/mise/')) {
+            return 'mise';
+        }
+    } catch {
+        // which failed — fall through to default
+    }
+    return 'npm';
+}
+
 module.exports = {
     readLocalVersion,
     fetchPyPIVersion,
     compareVersions,
     getVersionInfo,
-    formatVersionDisplay
+    formatVersionDisplay,
+    getClaudeCodeInstallMethod
 };

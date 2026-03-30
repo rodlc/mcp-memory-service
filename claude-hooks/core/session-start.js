@@ -13,7 +13,7 @@ const { formatMemoriesForContext } = require('../utilities/context-formatter');
 const { detectContextShift, extractCurrentContext, determineRefreshStrategy } = require('../utilities/context-shift-detector');
 const { analyzeGitContext, buildGitContextQuery } = require('../utilities/git-analyzer');
 const { MemoryClient } = require('../utilities/memory-client');
-const { getVersionInfo, formatVersionDisplay } = require('../utilities/version-checker');
+const { getVersionInfo, formatVersionDisplay, getClaudeCodeInstallMethod } = require('../utilities/version-checker');
 const { detectUserOverrides, logOverride } = require('../utilities/user-override-detector');
 
 /**
@@ -662,6 +662,14 @@ async function executeSessionStart(context) {
                 if (verbose && showMemoryDetails) {
                     console.warn(`[Memory Hook] Version check failed: ${error.message}`);
                 }
+            }
+        }
+
+        // Claude Code install method hint (mise users need different update command)
+        if (verbose && !cleanMode) {
+            const installMethod = getClaudeCodeInstallMethod();
+            if (installMethod === 'mise') {
+                console.log(`${CONSOLE_COLORS.YELLOW}⚠️  MàJ CLI${CONSOLE_COLORS.RESET} ${CONSOLE_COLORS.DIM}→${CONSOLE_COLORS.RESET} ${CONSOLE_COLORS.BRIGHT}mise upgrade claude-code${CONSOLE_COLORS.RESET} ${CONSOLE_COLORS.GRAY}(pas claude update)${CONSOLE_COLORS.RESET}`);
             }
         }
 
