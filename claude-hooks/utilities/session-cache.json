@@ -1,10 +1,14 @@
 {
-  "timestamp": "2026-03-31T10:03:37.751Z",
+  "timestamp": "2026-03-31T10:05:10.222Z",
   "sessionId": "test-session",
-  "project": "workspace",
+  "project": "submagic",
   "memoriesLoaded": 5,
   "recentCount": 4,
   "gitCommits": 10,
-  "gitKeywords": [],
+  "gitKeywords": [
+    "analytics",
+    "context",
+    "feat"
+  ],
   "storageBackend": "local_service"
 }
