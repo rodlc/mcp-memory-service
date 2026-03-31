@@ -6,10 +6,6 @@
     "enableMetrics": true,
     "pythonPath": "python3"
   },
-  "versionCheck": {
-    "checkPyPI": false,
-    "timeout": 2000
-  },
   "memoryService": {
     "protocol": "auto",
     "preferredProtocol": "http",

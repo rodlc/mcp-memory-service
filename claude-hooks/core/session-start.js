@@ -13,7 +13,6 @@ const { formatMemoriesForContext } = require('../utilities/context-formatter');
 const { detectContextShift, extractCurrentContext, determineRefreshStrategy } = require('../utilities/context-shift-detector');
 const { analyzeGitContext, buildGitContextQuery } = require('../utilities/git-analyzer');
 const { MemoryClient } = require('../utilities/memory-client');
-const { getVersionInfo, formatVersionDisplay, getClaudeCodeInstallMethod } = require('../utilities/version-checker');
 const { detectUserOverrides, logOverride } = require('../utilities/user-override-detector');
 
 /**
@@ -643,33 +642,6 @@ async function executeSessionStart(context) {
                 console.log(`${CONSOLE_COLORS.CYAN}💾 Storage${CONSOLE_COLORS.RESET} ${CONSOLE_COLORS.DIM}→${CONSOLE_COLORS.RESET} ${storageInfo.icon} ${CONSOLE_COLORS.BRIGHT}${storageInfo.description}${CONSOLE_COLORS.RESET} ${CONSOLE_COLORS.GRAY}(${storageInfo.location})${CONSOLE_COLORS.RESET}`);
             } else if (sourceDisplayMode === 'icon-only') {
                 console.log(`${CONSOLE_COLORS.CYAN}💾 Storage${CONSOLE_COLORS.RESET} ${CONSOLE_COLORS.DIM}→${CONSOLE_COLORS.RESET} ${storageInfo.icon} ${storageInfo.backend}`);
-            }
-        }
-
-        // Display version information
-        const showVersionInfo = config.versionCheck?.enabled !== false; // Default to true
-        if (showVersionInfo && verbose && !cleanMode) {
-            try {
-                const versionInfo = await getVersionInfo(context.workingDirectory || process.cwd(), {
-                    checkPyPI: config.versionCheck?.checkPyPI !== false,
-                    timeout: config.versionCheck?.timeout || 2000
-                });
-
-                const versionDisplay = formatVersionDisplay(versionInfo, CONSOLE_COLORS);
-                console.log(versionDisplay);
-            } catch (error) {
-                // Silently fail - version check is informational, not critical
-                if (verbose && showMemoryDetails) {
-                    console.warn(`[Memory Hook] Version check failed: ${error.message}`);
-                }
-            }
-        }
-
-        // Claude Code install method hint (mise users need different update command)
-        if (verbose && !cleanMode) {
-            const installMethod = getClaudeCodeInstallMethod();
-            if (installMethod === 'mise') {
-                console.log(`${CONSOLE_COLORS.YELLOW}⚠️  MàJ CLI${CONSOLE_COLORS.RESET} ${CONSOLE_COLORS.DIM}→${CONSOLE_COLORS.RESET} ${CONSOLE_COLORS.BRIGHT}mise upgrade claude-code${CONSOLE_COLORS.RESET} ${CONSOLE_COLORS.GRAY}(pas claude update)${CONSOLE_COLORS.RESET}`);
             }
         }
 
