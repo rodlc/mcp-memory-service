@@ -1,9 +1,9 @@
 {
-  "timestamp": "2026-03-31T16:13:56.463Z",
+  "timestamp": "2026-04-01T06:47:46.886Z",
   "sessionId": "test-session",
   "project": "workspace",
   "memoriesLoaded": 5,
-  "recentCount": 4,
+  "recentCount": 3,
   "gitCommits": 10,
   "gitKeywords": [],
   "storageBackend": "local_service"
