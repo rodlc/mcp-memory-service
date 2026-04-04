@@ -504,8 +504,8 @@ async function onSessionStart(context) {
  * Main execution logic (wrapped by timeout)
  */
 async function executeSessionStart(context) {
-    // Clear recap gate from previous session (fresh slate each session)
-    try { require('child_process').execSync('rm -f /tmp/.claude-recap-gate'); } catch(e) {}
+    // Clear gates from previous session (fresh slate each session)
+    try { require('child_process').execSync('rm -f /tmp/.claude-recap-gate /tmp/.claude-pr-push-gate'); } catch(e) {}
 
     try {
         // Load configuration first to check verbosity settings
