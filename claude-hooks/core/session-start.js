@@ -505,7 +505,7 @@ async function onSessionStart(context) {
  */
 async function executeSessionStart(context) {
     // Clear gates from previous session (fresh slate each session)
-    try { require('child_process').execSync('rm -f /tmp/.claude-recap-gate /tmp/.claude-pr-push-gate'); } catch(e) {}
+    try { require('child_process').execSync('rm -f /tmp/.claude-pr-push-gate'); } catch(e) {}
 
     try {
         // Load configuration first to check verbosity settings
@@ -1206,6 +1206,26 @@ async function executeSessionStart(context) {
         } else if (verbose && showMemoryDetails && !cleanMode) {
             console.log(`${CONSOLE_COLORS.YELLOW}📭 Memory Search${CONSOLE_COLORS.RESET} ${CONSOLE_COLORS.DIM}→${CONSOLE_COLORS.RESET} ${CONSOLE_COLORS.GRAY}No relevant memories found${CONSOLE_COLORS.RESET}`);
         }
+
+        // Worktree detection — contextual info for Claude
+        try {
+            const { execSync } = require('child_process');
+            const cwd = context.workingDirectory || process.cwd();
+            const gitDir = execSync('git rev-parse --git-dir', { encoding: 'utf8', cwd }).trim();
+            const gitCommonDir = execSync('git rev-parse --git-common-dir', { encoding: 'utf8', cwd }).trim();
+            const repoName = execSync('git rev-parse --show-toplevel', { encoding: 'utf8', cwd }).trim().split('/').pop();
+            if (!['workspace', 'dotfiles'].includes(repoName)) {
+                if (gitDir === gitCommonDir) {
+                    const branch = execSync('git symbolic-ref --short HEAD', { encoding: 'utf8', cwd }).trim();
+                    console.log(`\n⚠ NOT in a worktree (branch: ${branch}). Call EnterWorktree before any edits.`);
+                } else {
+                    const branch = execSync('git symbolic-ref --short HEAD', { encoding: 'utf8', cwd }).trim();
+                    const lastCommit = execSync('git log -1 --format="%cr"', { encoding: 'utf8', cwd }).trim();
+                    const wtName = execSync('git rev-parse --show-toplevel', { encoding: 'utf8', cwd }).trim().split('/').pop();
+                    console.log(`\n📍 Worktree '${wtName}' (branch: ${branch}, last commit: ${lastCommit}). New task? → EnterWorktree.`);
+                }
+            }
+        } catch (e) { /* not a git repo or git unavailable */ }
 
     } catch (error) {
         console.error(`${CONSOLE_COLORS.RED}❌ Memory Hook Error${CONSOLE_COLORS.RESET} ${CONSOLE_COLORS.DIM}→${CONSOLE_COLORS.RESET} ${error.message}`);
