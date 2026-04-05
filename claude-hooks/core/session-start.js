@@ -1213,16 +1213,22 @@ async function executeSessionStart(context) {
             const cwd = context.workingDirectory || process.cwd();
             const gitDir = execSync('git rev-parse --git-dir', { encoding: 'utf8', cwd }).trim();
             const gitCommonDir = execSync('git rev-parse --git-common-dir', { encoding: 'utf8', cwd }).trim();
-            const repoName = execSync('git rev-parse --show-toplevel', { encoding: 'utf8', cwd }).trim().split('/').pop();
+            const resolvedCommonDir = require('path').resolve(cwd, gitCommonDir);
+            const repoName = require('path').dirname(resolvedCommonDir).split('/').pop();
             if (!['workspace', 'dotfiles'].includes(repoName)) {
                 if (gitDir === gitCommonDir) {
                     const branch = execSync('git symbolic-ref --short HEAD', { encoding: 'utf8', cwd }).trim();
-                    console.log(`\n⚠ NOT in a worktree (branch: ${branch}). Call EnterWorktree before any edits.`);
+                    console.log(`\n⚠ NOT in a worktree on ${repoName} (branch: ${branch}). Call EnterWorktree before any edits.`);
                 } else {
                     const branch = execSync('git symbolic-ref --short HEAD', { encoding: 'utf8', cwd }).trim();
                     const lastCommit = execSync('git log -1 --format="%cr"', { encoding: 'utf8', cwd }).trim();
                     const wtName = execSync('git rev-parse --show-toplevel', { encoding: 'utf8', cwd }).trim().split('/').pop();
-                    console.log(`\n📍 Worktree '${wtName}' (branch: ${branch}, last commit: ${lastCommit}). New task? → EnterWorktree.`);
+                    let portInfo = '';
+                    try {
+                        const port = require('fs').readFileSync(require('path').join(cwd, '.port'), 'utf8').trim();
+                        portInfo = `, port: ${port}`;
+                    } catch (e) { /* no .port file — silent */ }
+                    console.log(`\n📍 Worktree '${wtName}' on ${repoName} (branch: ${branch}, last commit: ${lastCommit}${portInfo}). New task? → EnterWorktree.`);
                 }
             }
         } catch (e) { /* not a git repo or git unavailable */ }
