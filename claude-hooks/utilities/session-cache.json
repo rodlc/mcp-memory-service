@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-04-05T10:04:27.527Z",
+  "timestamp": "2026-04-05T10:17:24.748Z",
   "sessionId": "test-session",
   "project": "workspace",
   "memoriesLoaded": 5,
@@ -7,8 +7,7 @@
   "gitCommits": 10,
   "gitKeywords": [
     "fix",
-    "git",
-    "session"
+    "git"
   ],
   "storageBackend": "local_service"
 }
