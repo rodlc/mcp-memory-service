@@ -7,11 +7,26 @@ const fs = require('fs').promises;
 const path = require('path');
 const https = require('https');
 const http = require('http');
+const os = require('os');
 
 // Import utilities
 const { detectProjectContext } = require('../utilities/project-detector');
 const { formatSessionConsolidation } = require('../utilities/context-formatter');
 const { detectUserOverrides, logOverride } = require('../utilities/user-override-detector');
+const { MemoryClient } = require('../utilities/memory-client');
+
+/**
+ * Log error to local file (silent network failures should not be silent)
+ */
+async function logError(context, message) {
+    try {
+        const logDir = path.join(os.homedir(), '.claude', 'logs');
+        await fs.mkdir(logDir, { recursive: true });
+        const logPath = path.join(logDir, 'session-end-errors.log');
+        const timestamp = new Date().toISOString();
+        await fs.appendFile(logPath, `[${timestamp}] [${context}] ${message}\n`);
+    } catch (_) { /* never throw from error logger */ }
+}
 
 /**
  * Load hook configuration
@@ -26,7 +41,7 @@ async function loadConfig() {
         return {
             memoryService: {
                 http: {
-                    endpoint: 'http://127.0.0.1:8000',
+                    endpoint: 'http://127.0.0.1:4242',
                     apiKey: 'test-key-123'
                 },
                 defaultTags: ['claude-code', 'auto-generated'],
@@ -222,7 +237,7 @@ function triggerQualityEvaluation(endpoint, apiKey, contentHash) {
 
         const options = {
             hostname: url.hostname,
-            port: url.port || (isHttps ? 8443 : 8000),
+            port: url.port || (isHttps ? 8443 : 4242),
             path: url.pathname,
             method: 'POST',
             headers: {
@@ -312,7 +327,7 @@ function storeSessionMemory(endpoint, apiKey, content, projectContext, analysis)
 
         const options = {
             hostname: url.hostname,
-            port: url.port || (isHttps ? 8443 : 8000),
+            port: url.port || (isHttps ? 8443 : 4242),
             path: url.pathname,
             method: 'POST',
             headers: {
@@ -419,7 +434,7 @@ async function onSessionEnd(context) {
         const consolidation = formatSessionConsolidation(analysis, projectContext);
 
         // Get endpoint and apiKey from new config structure
-        const endpoint = config.memoryService?.http?.endpoint || config.memoryService?.endpoint || 'http://127.0.0.1:8000';
+        const endpoint = config.memoryService?.http?.endpoint || config.memoryService?.endpoint || 'http://127.0.0.1:4242';
         const apiKey = config.memoryService?.http?.apiKey || config.memoryService?.apiKey || 'test-key-123';
 
         // Store to memory service
@@ -454,8 +469,7 @@ async function onSessionEnd(context) {
 
         // C3: Rate injected-but-unused memories as neutral (implicit decay signal)
         try {
-            const os = require('os');
-            const hashesPath = require('path').join(os.tmpdir(), 'claude-injected-memories.json');
+            const hashesPath = path.join(os.tmpdir(), 'claude-injected-memories.json');
             const injectedData = JSON.parse(await fs.readFile(hashesPath, 'utf8'));
             const injectedHashes = injectedData.hashes || [];
 
@@ -465,12 +479,12 @@ async function onSessionEnd(context) {
 
                 for (const hash of injectedHashes) {
                     if (!conversationText.includes(hash)) {
-                        // Fire & forget neutral rating (not punitive — just a weak decay signal)
+                        // Fire & forget neutral rating via MemoryClient endpoint config
                         const postData = JSON.stringify({ rating: 0, feedback: 'injected-not-referenced' });
                         const url = new URL(`/api/quality/memories/${hash}/rate`, endpoint);
                         const req = http.request({
                             hostname: url.hostname,
-                            port: url.port || 4242,
+                            port: url.port,
                             path: url.pathname,
                             method: 'POST',
                             headers: {
@@ -479,12 +493,13 @@ async function onSessionEnd(context) {
                                 'Authorization': `Bearer ${apiKey}`
                             }
                         });
-                        req.on('error', () => {});
+                        req.on('error', (err) => logError('C3-rate', `${hash.substring(0,8)}: ${err.message}`));
                         req.write(postData);
                         req.end();
                     }
                 }
-                console.log(`[Memory Hook] C3 feedback: rated ${injectedHashes.filter(h => !conversationText.includes(h)).length} unused memories as neutral`);
+                const unusedCount = injectedHashes.filter(h => !conversationText.includes(h)).length;
+                console.log(`[Memory Hook] C3 feedback: rated ${unusedCount} unused memories as neutral`);
             }
 
             // Clean up temp file
@@ -494,7 +509,9 @@ async function onSessionEnd(context) {
         }
 
     } catch (error) {
-        console.error('[Memory Hook] Error in session end:', error.message);
+        const msg = `Error in session end: ${error.message}`;
+        console.error('[Memory Hook]', msg);
+        await logError('onSessionEnd', msg);
         // Fail gracefully - don't prevent session from ending
     }
 }

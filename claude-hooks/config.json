@@ -58,11 +58,11 @@
   },
   "memoryScoring": {
     "weights": {
-      "timeDecay": 0.5,
-      "tagRelevance": 0.2,
-      "contentRelevance": 0.15,
-      "contentQuality": 0.2,
-      "conversationRelevance": 0.25
+      "timeDecay": 0.4,
+      "tagRelevance": 0.15,
+      "contentRelevance": 0.12,
+      "contentQuality": 0.15,
+      "conversationRelevance": 0.18
     },
     "minRelevanceScore": 0.4,
     "timeDecayRate": 0.15,
@@ -92,18 +92,29 @@
     "enabled": true,
     "minLength": 300,
     "maxLength": 4000,
-    "patterns": ["decision", "error", "learning", "implementation", "important", "code"],
+    "patterns": [
+      "decision",
+      "error",
+      "learning",
+      "implementation",
+      "important",
+      "code"
+    ],
     "debugMode": false,
     "userOverrides": {
       "forceRemember": "#remember",
       "forceSkip": "#skip",
-      "applyTo": ["auto-capture", "session-start", "mid-conversation", "session-end"]
+      "applyTo": [
+        "auto-capture",
+        "session-start",
+        "mid-conversation",
+        "session-end"
+      ]
     }
   },
   "hooks": {
     "sessionStart": {
       "enabled": true,
-      "timeout": 8000,
       "priority": "high"
     },
     "midConversation": {
