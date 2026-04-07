@@ -636,14 +636,16 @@ async function parseTranscript(transcriptPath) {
         return { messages, modelUsageEntries };
     } catch (error) {
         console.error('[Memory Hook] Failed to parse transcript:', error.message);
-        return { messages: [] };
+        return { messages: [], modelUsageEntries: [] };
     }
 }
 
 
 function aggregateModelUsage(entries) {
     const totals = {};
-    for (const { model, usage } of entries) {
+    for (const entry of entries) {
+        if (!entry) continue;
+        const { model, usage } = entry;
         if (!model || !usage) continue;
         if (!totals[model]) totals[model] = { input: 0, output: 0 };
         totals[model].input  += (usage.input_tokens  || 0);
@@ -653,7 +655,7 @@ function aggregateModelUsage(entries) {
 }
 
 async function logModelUsage(transcriptPath, sessionId, totals) {
-    const logPath = path.join(os.homedir(), '.claude', 'model-usage.jsonl');
+    const logPath = path.join(os.homedir(), '.claude', 'logs', 'model-usage.jsonl');
     const record = {
         ts: new Date().toISOString(),
         session_id: sessionId || 'unknown',
