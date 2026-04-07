@@ -35,6 +35,27 @@ class AdaptivePatternDetector {
                         pattern: /according to (our|the) (previous|earlier|last)/i,
                         confidence: 0.8,
                         description: 'Reference to past decisions'
+                    },
+                    // FR patterns — append to existing category for downstream compat
+                    {
+                        pattern: /(?:ce )?qu['’]on a(?:vait)? (?:fait|vu|trouv|d[éè]cid|choisi|discut|parl)/i,
+                        confidence: 0.9,
+                        description: 'FR: Reference to past work'
+                    },
+                    {
+                        pattern: /(?:rappelle|souviens|m[éè]moire|contexte pr[éè]c[éè]dent)/i,
+                        confidence: 0.9,
+                        description: 'FR: Explicit memory request'
+                    },
+                    {
+                        pattern: /(?:cherche|retrouve|v[éè]rifie) (?:ce qu['’]on|en m[éè]moire|le contexte)/i,
+                        confidence: 0.9,
+                        description: 'FR: Search memory request'
+                    },
+                    {
+                        pattern: /c['’][éè]tait quoi d[éè]j[àa]/i,
+                        confidence: 0.8,
+                        description: 'FR: Recall request'
                     }
                 ],
 
@@ -53,6 +74,22 @@ class AdaptivePatternDetector {
                         pattern: /the (same|approach|solution|pattern) (we|that) (used|implemented|chose)/i,
                         confidence: 0.6,
                         description: 'Reuse of past solutions'
+                    },
+                    // FR patterns
+                    {
+                        pattern: /(?:session|fois) (?:pr[éè]c[éè]dente|derni[èe]re|pass[éè]e)/i,
+                        confidence: 0.7,
+                        description: 'FR: Previous session reference'
+                    },
+                    {
+                        pattern: /(?:avec ce qu['’]on|d['’]apr[èe]s ce qu|comme on avait)/i,
+                        confidence: 0.7,
+                        description: 'FR: Building on past work'
+                    },
+                    {
+                        pattern: /on en avait parl[éè]/i,
+                        confidence: 0.7,
+                        description: 'FR: Reference to past discussion'
                     }
                 ],
 
@@ -110,6 +147,13 @@ class AdaptivePatternDetector {
                         context: ['progression'],
                         confidence: 0.4,
                         description: 'Project progression'
+                    },
+                    // FR pattern
+                    {
+                        pattern: /\b(?:reprends|on en [éè]tait|o[ùu] on en est)\b/i,
+                        context: ['continuation'],
+                        confidence: 0.6,
+                        description: 'FR: Project continuation'
                     }
                 ],
 

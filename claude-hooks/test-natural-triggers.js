@@ -119,7 +119,12 @@ class NaturalTriggersTestSuite {
                 { message: "What did we decide about the authentication approach?", shouldTrigger: true },
                 { message: "Remind me how we handled user sessions", shouldTrigger: true },
                 { message: "Remember when we discussed the database schema?", shouldTrigger: true },
-                { message: "Just implementing a new feature", shouldTrigger: false }
+                { message: "Just implementing a new feature", shouldTrigger: false },
+                // FR test cases
+                { message: "avec ce qu'on a fait sur la mémoire", shouldTrigger: true },
+                { message: "rappelle-moi ce qu'on avait décidé", shouldTrigger: true },
+                { message: "cherche ce qu'on a en mémoire sur ce sujet", shouldTrigger: true },
+                { message: "c'était quoi déjà l'approche choisie", shouldTrigger: true }
             ];
 
             for (const testCase of testCases) {
@@ -157,6 +162,22 @@ class NaturalTriggersTestSuite {
                 this.assert(result.matches.length > 0, `Technical message should have pattern matches: "${message}"`);
                 this.assert(result.confidence > 0.2, `Technical message should have reasonable confidence: ${result.confidence} for "${message}"`);
             }
+        });
+
+        // Test 2b: FR Pattern Detection (projectContinuity)
+        await this.runTest('FR Pattern Detection - projectContinuity', async () => {
+            const detector = new AdaptivePatternDetector({
+                sensitivity: 0.7,
+                adaptiveLearning: false
+            });
+
+            const frContinuityMsg = "reprends où on en était avec ce projet";
+            const result = await detector.detectPatterns(frContinuityMsg, { context: 'continuation' });
+
+            this.assert(result.matches.length > 0,
+                `FR continuation message should match: "${frContinuityMsg}"`);
+            this.assert(result.matches.some(m => m.category === 'projectContinuity'),
+                'Should match projectContinuity category');
         });
 
         // Test 3: Sensitivity Adjustment
