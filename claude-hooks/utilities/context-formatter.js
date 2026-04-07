@@ -241,8 +241,12 @@ function formatMemoriesForCLI(memories, projectContext, options = {}) {
     }
 
     // Detect Plan:/Notion: references in stubs for footer injection
-    const refs = detectStubReferences(validMemories.map(v => v.memory));
-    const hasRefs = refs.plans.length > 0 || refs.notion.length > 0;
+    let refs = { plans: [], notion: [] };
+    let hasRefs = false;
+    try {
+        refs = detectStubReferences(validMemories.map(v => v.memory));
+        hasRefs = refs.plans.length > 0 || refs.notion.length > 0;
+    } catch (e) { /* silent: footer is advisory, not critical */ }
 
     // Build unified tree structure (no separate decorative box)
     let contextMessage = '';
@@ -685,17 +689,17 @@ function detectStubReferences(memories) {
     for (const mem of memories) {
         const content = mem.content || '';
 
-        // Extract plan file paths (e.g. Plan: ~/.claude/plans/foo.md)
-        for (const match of content.matchAll(/Plan:\s*([^\n]+\.md)/gi)) {
+        // Extract plan file paths — \S+\.md prevents capturing trailing prose
+        for (const match of content.matchAll(/Plan:\s*(\S+\.md)/gi)) {
             const planPath = match[1].trim();
             if (!refs.plans.includes(planPath)) {
                 refs.plans.push(planPath);
             }
         }
 
-        // Extract Notion UUIDs
-        for (const match of content.matchAll(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi)) {
-            const uuid = match[0];
+        // Extract Notion UUIDs — require Notion: prefix or notion.so/ URL (no bare UUIDs)
+        for (const match of content.matchAll(/(?:Notion:\s*|notion\.so\/)([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/gi)) {
+            const uuid = match[1];
             if (!refs.notion.includes(uuid)) {
                 refs.notion.push(uuid);
             }
