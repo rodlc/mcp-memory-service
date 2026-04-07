@@ -690,8 +690,9 @@ function detectStubReferences(memories) {
         const content = mem.content || '';
 
         // Extract plan file paths — \S+\.md prevents capturing trailing prose
+        // Strip trailing punctuation (., ), ,) that may follow path in prose
         for (const match of content.matchAll(/Plan:\s*(\S+\.md)/gi)) {
-            const planPath = match[1].trim();
+            const planPath = match[1].trim().replace(/[.,;:)\]]+$/, '');
             if (!refs.plans.includes(planPath)) {
                 refs.plans.push(planPath);
             }
