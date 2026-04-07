@@ -240,6 +240,10 @@ function formatMemoriesForCLI(memories, projectContext, options = {}) {
         }
     }
 
+    // Detect Plan:/Notion: references in stubs for footer injection
+    const refs = detectStubReferences(validMemories.map(v => v.memory));
+    const hasRefs = refs.plans.length > 0 || refs.notion.length > 0;
+
     // Build unified tree structure (no separate decorative box)
     let contextMessage = '';
 
@@ -304,7 +308,7 @@ function formatMemoriesForCLI(memories, projectContext, options = {}) {
         Object.entries(categories).forEach(([category, categoryMemories]) => {
             if (categoryMemories.length > 0) {
                 categoryCount++;
-                const isLast = categoryCount === totalCategories;
+                const isLast = categoryCount === totalCategories && !hasRefs;
                 const categoryIcon = categoryInfo[category]?.icon || '📝';
                 const categoryTitle = categoryInfo[category]?.title || 'Context';
                 const categoryColor = categoryInfo[category]?.color || COLORS.GRAY;
@@ -357,7 +361,7 @@ function formatMemoriesForCLI(memories, projectContext, options = {}) {
         if (!hasContent) {
             // Fallback to linear format
             validMemories.forEach(({ formatted }, idx) => {
-                const isLast = idx === validMemories.length - 1;
+                const isLast = idx === validMemories.length - 1 && !hasRefs;
                 const connector = isLast ? '   ' : `${COLORS.CYAN}│${COLORS.RESET}  `;
                 const lines = wrapText(formatted, 76, 3, connector);
 
@@ -374,7 +378,7 @@ function formatMemoriesForCLI(memories, projectContext, options = {}) {
     } else {
         // Simple linear formatting with enhanced visual elements
         validMemories.forEach(({ formatted }, idx) => {
-            const isLast = idx === validMemories.length - 1;
+            const isLast = idx === validMemories.length - 1 && !hasRefs;
             const connector = isLast ? '   ' : `${COLORS.CYAN}│${COLORS.RESET}  `;
             const lines = wrapText(formatted, 76, 3, connector);
 
@@ -389,7 +393,18 @@ function formatMemoriesForCLI(memories, projectContext, options = {}) {
         });
     }
 
-    // Tree structure ends naturally with └─, no need for separate closing frame
+    // Append references footer if stubs contain Plan:/Notion: refs
+    if (hasRefs) {
+        contextMessage += `${COLORS.CYAN}│${COLORS.RESET}\n`;
+        contextMessage += `${COLORS.CYAN}└─${COLORS.RESET} 📌 ${COLORS.YELLOW}${COLORS.BRIGHT}References found in stubs${COLORS.RESET} ${COLORS.DIM}— follow before concluding:${COLORS.RESET}\n`;
+        refs.plans.forEach(plan => {
+            contextMessage += `     ${COLORS.DIM}Plan:${COLORS.RESET} ${COLORS.GRAY}${plan}${COLORS.RESET}\n`;
+        });
+        refs.notion.forEach(id => {
+            contextMessage += `     ${COLORS.DIM}Notion:${COLORS.RESET} ${COLORS.GRAY}${id}${COLORS.RESET}\n`;
+        });
+    }
+
     return contextMessage;
 }
 
@@ -659,6 +674,35 @@ function extractMeaningfulContent(content, maxLength = 500, options = {}) {
 
     // Fallback to hard truncation
     return processedContent.substring(0, maxLength - 3).trim() + '...';
+}
+
+/**
+ * Detect Plan: and Notion: references in stub content for footer injection
+ */
+function detectStubReferences(memories) {
+    const refs = { plans: [], notion: [] };
+
+    for (const mem of memories) {
+        const content = mem.content || '';
+
+        // Extract plan file paths (e.g. Plan: ~/.claude/plans/foo.md)
+        for (const match of content.matchAll(/Plan:\s*([^\n]+\.md)/gi)) {
+            const planPath = match[1].trim();
+            if (!refs.plans.includes(planPath)) {
+                refs.plans.push(planPath);
+            }
+        }
+
+        // Extract Notion UUIDs
+        for (const match of content.matchAll(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi)) {
+            const uuid = match[0];
+            if (!refs.notion.includes(uuid)) {
+                refs.notion.push(uuid);
+            }
+        }
+    }
+
+    return refs;
 }
 
 /**
@@ -1155,7 +1199,8 @@ module.exports = {
     createProjectSummary,
     formatSessionConsolidation,
     isCLIEnvironment,
-    convertMarkdownToANSI
+    convertMarkdownToANSI,
+    detectStubReferences
 };
 
 // Direct execution support for testing
