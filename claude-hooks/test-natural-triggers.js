@@ -142,6 +142,19 @@ class NaturalTriggersTestSuite {
                 this.assert(actualTrigger === testCase.shouldTrigger,
                     `"${testCase.message}" should ${testCase.shouldTrigger ? '' : 'not '}trigger (got ${actualTrigger})`);
             }
+
+            // FR category assertions: verify explicit FR triggers land in explicitMemoryRequests
+            const frCategoryTests = [
+                "avec ce qu’on a fait sur la mémoire",
+                "rappelle-moi ce qu’on avait décidé"
+            ];
+            for (const msg of frCategoryTests) {
+                const frResult = await detector.detectPatterns(msg);
+                this.assert(
+                    frResult.matches.some(m => m.category === 'explicitMemoryRequests'),
+                    `FR message should match explicitMemoryRequests: "${msg}"`
+                );
+            }
         });
 
         // Test 2: Technical Discussion Patterns

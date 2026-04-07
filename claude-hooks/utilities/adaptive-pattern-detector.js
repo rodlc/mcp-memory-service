@@ -54,7 +54,7 @@ class AdaptivePatternDetector {
                     },
                     {
                         pattern: /c['’][éè]tait quoi d[éè]j[àa]/i,
-                        confidence: 0.8,
+                        confidence: 0.7,
                         description: 'FR: Recall request'
                     }
                 ],
