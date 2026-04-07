@@ -533,7 +533,8 @@ module.exports = {
     // Exported for testing
     _internal: {
         parseTranscript: null,  // Will be set after function definition
-        analyzeConversation
+        analyzeConversation,
+        aggregateModelUsage: null  // Will be set after function definition
     }
 };
 
@@ -590,6 +591,7 @@ async function parseTranscript(transcriptPath) {
         const content = await fs.readFile(transcriptPath, 'utf8');
         const lines = content.trim().split('\n');
         const messages = [];
+        const modelUsageEntries = [];
 
         for (const line of lines) {
             if (!line.trim()) continue;
@@ -620,6 +622,10 @@ async function parseTranscript(transcriptPath) {
                             });
                         }
                     }
+                    // Collect model + usage from assistant turns
+                    if (entry.type === 'assistant' && msg && msg.model && msg.usage) {
+                        modelUsageEntries.push({ model: msg.model, usage: msg.usage });
+                    }
                 }
             } catch (parseError) {
                 // Skip malformed lines
@@ -627,15 +633,43 @@ async function parseTranscript(transcriptPath) {
             }
         }
 
-        return { messages };
+        return { messages, modelUsageEntries };
     } catch (error) {
         console.error('[Memory Hook] Failed to parse transcript:', error.message);
         return { messages: [] };
     }
 }
 
+
+function aggregateModelUsage(entries) {
+    const totals = {};
+    for (const { model, usage } of entries) {
+        if (!model || !usage) continue;
+        if (!totals[model]) totals[model] = { input: 0, output: 0 };
+        totals[model].input  += (usage.input_tokens  || 0);
+        totals[model].output += (usage.output_tokens || 0);
+    }
+    return totals;
+}
+
+async function logModelUsage(transcriptPath, sessionId, totals) {
+    const logPath = path.join(os.homedir(), '.claude', 'model-usage.jsonl');
+    const record = {
+        ts: new Date().toISOString(),
+        session_id: sessionId || 'unknown',
+        transcript: transcriptPath || null,
+        models: totals
+    };
+    try {
+        await fs.appendFile(logPath, JSON.stringify(record) + '\n', 'utf8');
+    } catch (err) {
+        console.warn('[Memory Hook] Could not write model-usage.jsonl:', err.message);
+    }
+}
+
 // Set parseTranscript on exports for testing (after function is defined)
 module.exports._internal.parseTranscript = parseTranscript;
+module.exports._internal.aggregateModelUsage = aggregateModelUsage;
 
 /**
  * Mock conversation for manual testing (when no stdin/transcript available)
@@ -676,6 +710,15 @@ if (require.main === module) {
                 console.log(`[Memory Hook] Session end reason: ${stdinContext.reason || 'unknown'}`);
 
                 const conversation = await parseTranscript(stdinContext.transcript_path);
+
+                const usageTotals = aggregateModelUsage(conversation.modelUsageEntries || []);
+                if (Object.keys(usageTotals).length > 0) {
+                    const summary = Object.entries(usageTotals)
+                        .map(([m, u]) => `${m.split('-').slice(-2).join('-')}=${Math.round(u.input/1000)}K/${Math.round(u.output/1000)}K`)
+                        .join(', ');
+                    console.log(`[Memory Hook] Token usage: ${summary}`);
+                    await logModelUsage(stdinContext.transcript_path, stdinContext.session_id, usageTotals);
+                }
 
                 context = {
                     workingDirectory: stdinContext.cwd || process.cwd(),
