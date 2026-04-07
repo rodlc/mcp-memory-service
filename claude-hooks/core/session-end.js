@@ -663,6 +663,7 @@ async function logModelUsage(transcriptPath, sessionId, totals) {
         models: totals
     };
     try {
+        await fs.mkdir(path.dirname(logPath), { recursive: true });
         await fs.appendFile(logPath, JSON.stringify(record) + '\n', 'utf8');
     } catch (err) {
         console.warn('[Memory Hook] Could not write model-usage.jsonl:', err.message);
