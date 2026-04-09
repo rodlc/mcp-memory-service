@@ -14,6 +14,7 @@ const { detectProjectContext } = require('../utilities/project-detector');
 const { formatSessionConsolidation } = require('../utilities/context-formatter');
 const { detectUserOverrides, logOverride } = require('../utilities/user-override-detector');
 const { MemoryClient } = require('../utilities/memory-client');
+const { ollamaChat } = require('../utilities/ollama-client');
 
 /**
  * Log error to local file (silent network failures should not be silent)
@@ -60,7 +61,72 @@ async function loadConfig() {
 }
 
 /**
- * Analyze conversation to extract key information
+ * Analyze conversation via Ollama (qwen3:4b).
+ * Returns same shape as analyzeConversation(). Throws on failure.
+ */
+async function ollamaAnalyzeConversation(conversationData) {
+    if (!conversationData || !conversationData.messages) {
+        throw new Error('No conversation data');
+    }
+
+    // Build condensed transcript (cap at ~4000 chars to stay within model context)
+    const transcript = conversationData.messages
+        .map(m => `${m.role.toUpperCase()}: ${(m.content || '').substring(0, 800)}`)
+        .join('\n')
+        .substring(0, 4000);
+
+    const systemPrompt = `You are a session analyzer. Extract structured information from a Claude Code conversation transcript.
+Return ONLY valid JSON with this exact structure (no markdown, no explanation):
+{
+  "topics": ["topic1", "topic2"],
+  "decisions": ["decision sentence 1", "decision sentence 2"],
+  "insights": ["insight 1"],
+  "codeChanges": ["change description 1"],
+  "nextSteps": ["next step 1"]
+}
+Rules:
+- topics: max 5, short keywords (e.g. "authentication", "debugging", "api")
+- decisions: max 3, complete sentences describing what was decided
+- insights: max 3, things learned or discovered
+- codeChanges: max 4, concise descriptions of files/features modified
+- nextSteps: max 4, concrete remaining tasks
+- All arrays can be empty []
+- No null values, no extra fields`;
+
+    const response = await ollamaChat([
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: `Analyze this session transcript:\n\n${transcript}` }
+    ], { timeoutMs: 12000 });
+
+    // Strip think blocks (qwen3 extended thinking)
+    const cleaned = response.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+
+    // Extract JSON from response (handle cases where model adds prose)
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('No JSON in Ollama response');
+
+    const parsed = JSON.parse(jsonMatch[0]);
+
+    // Normalize to expected shape
+    const arr = (v) => (Array.isArray(v) ? v : []);
+    const totalExtracted = (arr(parsed.topics).length + arr(parsed.decisions).length +
+                           arr(parsed.insights).length + arr(parsed.codeChanges).length +
+                           arr(parsed.nextSteps).length);
+
+    return {
+        topics: arr(parsed.topics).slice(0, 5),
+        decisions: arr(parsed.decisions).slice(0, 3),
+        insights: arr(parsed.insights).slice(0, 3),
+        codeChanges: arr(parsed.codeChanges).slice(0, 4),
+        nextSteps: arr(parsed.nextSteps).slice(0, 4),
+        sessionLength: transcript.length,
+        confidence: Math.min(1.0, totalExtracted / 10),
+        source: 'ollama'
+    };
+}
+
+/**
+ * Analyze conversation to extract key information (regex fallback)
  */
 function analyzeConversation(conversationData) {
     try {
@@ -419,16 +485,22 @@ async function onSessionEnd(context) {
         const projectContext = await detectProjectContext(context.workingDirectory || process.cwd());
         console.log(`[Memory Hook] Consolidating session for project: ${projectContext.name}`);
 
-        // Analyze conversation
-        const analysis = analyzeConversation(context.conversation);
+        // Analyze conversation — Ollama first, regex fallback
+        let analysis;
+        try {
+            analysis = await ollamaAnalyzeConversation(context.conversation);
+            console.log(`[Memory Hook] Ollama analysis: ${analysis.topics.length} topics, ${analysis.decisions.length} decisions, confidence: ${(analysis.confidence * 100).toFixed(1)}%`);
+        } catch (ollamaErr) {
+            console.warn(`[Memory Hook] Ollama unavailable (${ollamaErr.message}), falling back to regex`);
+            analysis = analyzeConversation(context.conversation);
+            console.log(`[Memory Hook] Regex analysis: ${analysis.topics.length} topics, ${analysis.decisions.length} decisions, confidence: ${(analysis.confidence * 100).toFixed(1)}%`);
+        }
 
         // Bypass confidence check with #remember
         if (!overrides.forceRemember && analysis.confidence < 0.1) {
             console.log('[Memory Hook] Session analysis confidence too low, skipping consolidation');
             return;
         }
-        
-        console.log(`[Memory Hook] Session analysis: ${analysis.topics.length} topics, ${analysis.decisions.length} decisions, confidence: ${(analysis.confidence * 100).toFixed(1)}%`);
         
         // Format session consolidation
         const consolidation = formatSessionConsolidation(analysis, projectContext);

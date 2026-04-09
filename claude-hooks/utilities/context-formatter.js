@@ -261,24 +261,6 @@ function formatMemoriesForCLI(memories, projectContext, options = {}) {
 
         contextMessage += `\n${COLORS.CYAN}┌─${COLORS.RESET} 🧠 ${COLORS.BRIGHT}Injected Memory Context${COLORS.RESET} ${COLORS.DIM}→${COLORS.RESET} ${COLORS.BLUE}${projectInfo.join(', ')}${COLORS.RESET}\n`;
 
-        // Add storage information if available
-        if (storageInfo) {
-            const locationText = storageInfo.location.length > 40 ?
-                storageInfo.location.substring(0, 37) + '...' :
-                storageInfo.location;
-
-            // Show rich storage info if health data is available
-            if (storageInfo.health && storageInfo.health.totalMemories > 0) {
-                const memoryInfo = `${storageInfo.health.totalMemories} memories`;
-                contextMessage += `${COLORS.CYAN}│${COLORS.RESET}\n`;
-                contextMessage += `${COLORS.CYAN}├─${COLORS.RESET} ${storageInfo.icon} ${COLORS.BRIGHT}${storageInfo.description}${COLORS.RESET} ${COLORS.DIM}•${COLORS.RESET} ${COLORS.GRAY}${memoryInfo}${COLORS.RESET}\n`;
-            } else {
-                contextMessage += `${COLORS.CYAN}│${COLORS.RESET}\n`;
-                contextMessage += `${COLORS.CYAN}├─${COLORS.RESET} ${storageInfo.icon} ${COLORS.BRIGHT}${storageInfo.description}${COLORS.RESET}\n`;
-            }
-            contextMessage += `${COLORS.CYAN}├─${COLORS.RESET} 📍 ${COLORS.GRAY}${locationText}${COLORS.RESET}\n`;
-        }
-
         contextMessage += `${COLORS.CYAN}├─${COLORS.RESET} 📚 ${COLORS.BRIGHT}${validMemories.length} memories loaded${COLORS.RESET}\n`;
 
         if (branch || lastCommit) {
@@ -307,10 +289,10 @@ function formatMemoriesForCLI(memories, projectContext, options = {}) {
 
         let hasContent = false;
         let categoryCount = 0;
-        const totalCategories = Object.values(categories).filter(cat => cat.length > 0).length;
+        const totalCategories = Object.values(categories).filter(cat => cat.length >= 2).length;
 
         Object.entries(categories).forEach(([category, categoryMemories]) => {
-            if (categoryMemories.length > 0) {
+            if (categoryMemories.length >= 2) {
                 categoryCount++;
                 const isLast = categoryCount === totalCategories && !hasRefs;
                 const categoryIcon = categoryInfo[category]?.icon || '📝';
