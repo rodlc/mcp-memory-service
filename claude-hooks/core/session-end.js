@@ -96,7 +96,7 @@ Rules:
     const response = await ollamaChat([
         { role: 'system', content: systemPrompt },
         { role: 'user', content: `Analyze this session transcript:\n\n${transcript}` }
-    ], { timeoutMs: 12000 });
+    ], { timeoutMs: 12000, caller: 'session-end' });
 
     // Strip think blocks (qwen3 extended thinking)
     const cleaned = response.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
@@ -664,6 +664,9 @@ async function parseTranscript(transcriptPath) {
         const lines = content.trim().split('\n');
         const messages = [];
         const modelUsageEntries = [];
+        const ollamaTools = {};
+
+        const OLLAMA_TOOL_RE = /^mcp__(houtini-lm|local-explore__(summarize_file|explore))/;
 
         for (const line of lines) {
             if (!line.trim()) continue;
@@ -685,6 +688,14 @@ async function parseTranscript(transcriptPath) {
                                 .filter(block => block.type === 'text')
                                 .map(block => block.text)
                                 .join('\n');
+
+                            // Count Ollama-backed tool_use calls
+                            for (const block of msg.content) {
+                                if (block.type === 'tool_use' && OLLAMA_TOOL_RE.test(block.name)) {
+                                    const key = block.name.replace(/^mcp__/, '');
+                                    ollamaTools[key] = (ollamaTools[key] || 0) + 1;
+                                }
+                            }
                         }
 
                         if (contentText) {
@@ -705,7 +716,7 @@ async function parseTranscript(transcriptPath) {
             }
         }
 
-        return { messages, modelUsageEntries };
+        return { messages, modelUsageEntries, ollamaTools };
     } catch (error) {
         console.error('[Memory Hook] Failed to parse transcript:', error.message);
         return { messages: [], modelUsageEntries: [] };
@@ -726,7 +737,7 @@ function aggregateModelUsage(entries) {
     return totals;
 }
 
-async function logModelUsage(transcriptPath, sessionId, totals) {
+async function logModelUsage(transcriptPath, sessionId, totals, ollamaTools) {
     const logPath = path.join(os.homedir(), '.claude', 'logs', 'model-usage.jsonl');
     const record = {
         ts: new Date().toISOString(),
@@ -734,6 +745,9 @@ async function logModelUsage(transcriptPath, sessionId, totals) {
         transcript: transcriptPath || null,
         models: totals
     };
+    if (ollamaTools && Object.keys(ollamaTools).length > 0) {
+        record.ollama_tools = ollamaTools;
+    }
     try {
         await fs.mkdir(path.dirname(logPath), { recursive: true });
         await fs.appendFile(logPath, JSON.stringify(record) + '\n', 'utf8');
@@ -792,7 +806,7 @@ if (require.main === module) {
                         .map(([m, u]) => `${m.split('-').slice(-2).join('-')}=${Math.round(u.input/1000)}K/${Math.round(u.output/1000)}K`)
                         .join(', ');
                     console.log(`[Memory Hook] Token usage: ${summary}`);
-                    await logModelUsage(stdinContext.transcript_path, stdinContext.session_id, usageTotals);
+                    await logModelUsage(stdinContext.transcript_path, stdinContext.session_id, usageTotals, conversation.ollamaTools);
                 }
 
                 context = {
