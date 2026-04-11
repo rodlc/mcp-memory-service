@@ -1,14 +1,14 @@
 {
-  "timestamp": "2026-04-11T13:48:35.166Z",
+  "timestamp": "2026-04-11T13:50:30.094Z",
   "sessionId": "test-session",
-  "project": "workspace",
-  "memoriesLoaded": 5,
+  "project": "traxyo",
+  "memoriesLoaded": 3,
   "recentCount": 5,
   "gitCommits": 10,
   "gitKeywords": [
-    "refactor",
-    "feat",
-    "fix"
+    "update",
+    "fix",
+    "feat"
   ],
   "storageBackend": "local_service"
 }
