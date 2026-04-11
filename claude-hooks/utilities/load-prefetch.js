@@ -24,7 +24,7 @@ const PLANS_DIR = (() => {
     catch { return PLANS_SYMLINK; }
 })();
 const NOTION_TOKEN = process.env.NOTION_API_TOKEN || process.env.NOTION_TOKEN || process.env.NOTION_API_KEY || '';
-const OLLAMA_SUMMARIZE_THRESHOLD = 500; // chars — skip Ollama if page already short
+const OLLAMA_SUMMARIZE_THRESHOLD = 2000; // chars — skip Ollama if page already short (A/B: pages <2000 = déjà compactes, Ollama = overhead pur)
 const NOTION_PAGE_CAP = 2; // max pages to fetch full content for
 
 // ── HTTP helpers ──────────────────────────────────────────────────────────────
