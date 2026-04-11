@@ -1,14 +1,14 @@
 {
-  "timestamp": "2026-04-10T10:08:51.440Z",
+  "timestamp": "2026-04-11T11:00:47.027Z",
   "sessionId": "test-session",
   "project": "workspace",
   "memoriesLoaded": 5,
   "recentCount": 5,
   "gitCommits": 10,
   "gitKeywords": [
+    "session",
     "fix",
-    "mcp",
-    "chore"
+    "mcp"
   ],
   "storageBackend": "local_service"
 }
