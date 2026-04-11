@@ -588,28 +588,6 @@ async function onSessionEnd(context) {
 }
 
 /**
- * Hook metadata for Claude Code
- */
-module.exports = {
-    name: 'memory-awareness-session-end',
-    version: '1.0.0',
-    description: 'Automatically consolidate and store session outcomes',
-    trigger: 'session-end',
-    handler: onSessionEnd,
-    config: {
-        async: true,
-        timeout: 15000, // 15 second timeout
-        priority: 'normal'
-    },
-    // Exported for testing
-    _internal: {
-        parseTranscript,
-        analyzeConversation,
-        aggregateModelUsage
-    }
-};
-
-/**
  * Read JSON context from stdin (provided by Claude Code)
  * Returns: { transcript_path, reason, cwd, session_id, ... }
  */
@@ -718,7 +696,7 @@ async function parseTranscript(transcriptPath) {
         return { messages, modelUsageEntries, ollamaTools };
     } catch (error) {
         console.error('[Memory Hook] Failed to parse transcript:', error.message);
-        return { messages: [], modelUsageEntries: [] };
+        return { messages: [], modelUsageEntries: [], ollamaTools: {} };
     }
 }
 
@@ -755,7 +733,27 @@ async function logModelUsage(transcriptPath, sessionId, totals, ollamaTools) {
     }
 }
 
-
+/**
+ * Hook metadata for Claude Code
+ */
+module.exports = {
+    name: 'memory-awareness-session-end',
+    version: '1.0.0',
+    description: 'Automatically consolidate and store session outcomes',
+    trigger: 'session-end',
+    handler: onSessionEnd,
+    config: {
+        async: true,
+        timeout: 15000, // 15 second timeout
+        priority: 'normal'
+    },
+    // Exported for testing
+    _internal: {
+        parseTranscript,
+        analyzeConversation,
+        aggregateModelUsage
+    }
+};
 
 /**
  * Mock conversation for manual testing (when no stdin/transcript available)
