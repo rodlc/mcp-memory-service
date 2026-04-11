@@ -220,8 +220,7 @@ async function searchNotion(subject) {
                             content: `Résume cette page Notion en 3 bullet points max, en français, de façon télégraphique:\n\n${content.slice(0, 3000)}`
                         }
                     ], { timeoutMs: 15000, caller: 'load-prefetch' });
-                    // Strip think blocks from qwen3
-                    content = summary.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+                    content = summary.trim();
                 } catch {
                     // Keep raw content if Ollama fails (truncated)
                     content = content.slice(0, 500) + '…';

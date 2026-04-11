@@ -61,7 +61,7 @@ async function loadConfig() {
 }
 
 /**
- * Analyze conversation via Ollama (qwen3:4b).
+ * Analyze conversation via Ollama (gemma3:4b).
  * Returns same shape as analyzeConversation(). Throws on failure.
  */
 async function ollamaAnalyzeConversation(conversationData) {
@@ -98,8 +98,7 @@ Rules:
         { role: 'user', content: `Analyze this session transcript:\n\n${transcript}` }
     ], { timeoutMs: 12000, caller: 'session-end' });
 
-    // Strip think blocks (qwen3 extended thinking)
-    const cleaned = response.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+    const cleaned = response.trim();
 
     // Extract JSON from response (handle cases where model adds prose)
     const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
@@ -604,9 +603,9 @@ module.exports = {
     },
     // Exported for testing
     _internal: {
-        parseTranscript: null,  // Will be set after function definition
+        parseTranscript,
         analyzeConversation,
-        aggregateModelUsage: null  // Will be set after function definition
+        aggregateModelUsage
     }
 };
 
@@ -756,9 +755,7 @@ async function logModelUsage(transcriptPath, sessionId, totals, ollamaTools) {
     }
 }
 
-// Set parseTranscript on exports for testing (after function is defined)
-module.exports._internal.parseTranscript = parseTranscript;
-module.exports._internal.aggregateModelUsage = aggregateModelUsage;
+
 
 /**
  * Mock conversation for manual testing (when no stdin/transcript available)
