@@ -1,13 +1,13 @@
 /**
  * Ollama HTTP client utility
  * Direct HTTP calls to local Ollama — no dependencies.
- * Default model: qwen3:4b (code-first, curated houtini-lm profile)
+ * Default model: gemma3:4b (no think-loop, validated 2026-04-11)
  */
 
 const http = require('http');
 
 const OLLAMA_ENDPOINT = 'http://127.0.0.1:11434';
-const DEFAULT_MODEL = 'qwen3:4b';
+const DEFAULT_MODEL = 'gemma3:4b';
 const DEFAULT_TIMEOUT_MS = 10000;
 
 /**
