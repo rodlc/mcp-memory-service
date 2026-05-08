@@ -300,6 +300,7 @@ class DreamInspiredConsolidator:
                         to_update = []
                         for hash_, flags in flagged.items():
                             if hash_ in mem_map:
+                                mem_map[hash_].metadata = mem_map[hash_].metadata or {}
                                 mem_map[hash_].metadata['lint_flags'] = flags
                                 to_update.append(mem_map[hash_])
                         if to_update:

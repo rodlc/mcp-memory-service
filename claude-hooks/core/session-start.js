@@ -475,6 +475,42 @@ const CONSOLE_COLORS = {
 };
 
 /**
+ * Query plan-cache.db for the N most recent plans (ambient context — no stub lookup needed)
+ */
+async function getRecentPlansSection(limit = 3) {
+    try {
+        const os = require('os');
+        const { execSync } = require('child_process');
+        const dbPath = path.join(os.homedir(), '.claude', 'plan-cache.db');
+        try { require('fs').accessSync(dbPath); } catch (e) { return ''; }
+
+        const output = execSync(
+            `sqlite3 "${dbPath}" "SELECT title, substr(coalesce(tldr,''),1,100), plan_path FROM plans ORDER BY updated_at DESC LIMIT ${limit}"`,
+            { encoding: 'utf8', timeout: 2000 }
+        ).trim();
+        if (!output) return '';
+
+        const rows = output.split('\n').map(line => {
+            const parts = line.split('|');
+            return { title: parts[0] || '', tldr: parts[1] || '', planPath: parts[2] || '' };
+        }).filter(r => r.title);
+        if (!rows.length) return '';
+
+        const C = CONSOLE_COLORS;
+        let section = `\n\n${C.CYAN}├─${C.RESET} 📋 ${C.BRIGHT}Recent Plans${C.RESET}\n`;
+        rows.forEach((r, i) => {
+            const connector = i === rows.length - 1 ? `${C.CYAN}└─${C.RESET}` : `${C.CYAN}├─${C.RESET}`;
+            const tldrText = r.tldr ? ` ${C.GRAY}${r.tldr}${C.RESET}` : '';
+            section += `${C.CYAN}│${C.RESET}  ${connector} ${r.title}${tldrText}\n`;
+            section += `${C.CYAN}│${C.RESET}        Plan:\n${C.CYAN}│${C.RESET}        ${r.planPath}\n`;
+        });
+        return section;
+    } catch (e) {
+        return '';
+    }
+}
+
+/**
  * Main session start hook function with enhanced visual output
  */
 async function onSessionStart(context) {
@@ -1088,7 +1124,16 @@ async function executeSessionStart(context) {
                 adaptiveTruncation: config.output?.adaptiveTruncation !== false,
                 contentLengthConfig: config.contentLength
             });
-            
+
+            // Append recent plans section (ambient context, no stub hop needed)
+            const recentPlansSection = await getRecentPlansSection(3);
+            if (recentPlansSection) {
+                contextMessage += recentPlansSection;
+                if (verbose && !cleanMode) {
+                    console.log(`${CONSOLE_COLORS.CYAN}📌 Recent Plans${CONSOLE_COLORS.RESET} ${CONSOLE_COLORS.DIM}→${CONSOLE_COLORS.RESET} injected (last 3)`);
+                }
+            }
+
             // Inject context into session
             if (context.injectSystemMessage) {
                 await context.injectSystemMessage(contextMessage);
