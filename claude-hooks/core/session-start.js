@@ -11,7 +11,7 @@ const { detectProjectContext } = require('../utilities/project-detector');
 const { scoreMemoryRelevance, analyzeMemoryAgeDistribution, calculateAdaptiveGitWeight } = require('../utilities/memory-scorer');
 const { formatMemoriesForContext } = require('../utilities/context-formatter');
 const { detectContextShift, extractCurrentContext, determineRefreshStrategy } = require('../utilities/context-shift-detector');
-const { analyzeGitContext, buildGitContextQuery } = require('../utilities/git-analyzer');
+const { analyzeGitContext } = require('../utilities/git-analyzer');
 const { MemoryClient } = require('../utilities/memory-client');
 const { detectUserOverrides, logOverride } = require('../utilities/user-override-detector');
 
@@ -475,49 +475,13 @@ const CONSOLE_COLORS = {
 };
 
 /**
- * Query plan-cache.db for the N most recent plans (ambient context — no stub lookup needed)
- */
-async function getRecentPlansSection(limit = 3) {
-    try {
-        const os = require('os');
-        const { execSync } = require('child_process');
-        const dbPath = path.join(os.homedir(), '.claude', 'plan-cache.db');
-        try { require('fs').accessSync(dbPath); } catch (e) { return ''; }
-
-        const output = execSync(
-            `sqlite3 "${dbPath}" "SELECT title, substr(coalesce(tldr,''),1,100), plan_path FROM plans ORDER BY updated_at DESC LIMIT ${limit}"`,
-            { encoding: 'utf8', timeout: 2000 }
-        ).trim();
-        if (!output) return '';
-
-        const rows = output.split('\n').map(line => {
-            const parts = line.split('|');
-            return { title: parts[0] || '', tldr: parts[1] || '', planPath: parts[2] || '' };
-        }).filter(r => r.title);
-        if (!rows.length) return '';
-
-        const C = CONSOLE_COLORS;
-        let section = `\n\n${C.CYAN}├─${C.RESET} 📋 ${C.BRIGHT}Recent Plans${C.RESET}\n`;
-        rows.forEach((r, i) => {
-            const connector = i === rows.length - 1 ? `${C.CYAN}└─${C.RESET}` : `${C.CYAN}├─${C.RESET}`;
-            const tldrText = r.tldr ? ` ${C.GRAY}${r.tldr}${C.RESET}` : '';
-            section += `${C.CYAN}│${C.RESET}  ${connector} ${r.title}${tldrText}\n`;
-            section += `${C.CYAN}│${C.RESET}        Plan:\n${C.CYAN}│${C.RESET}        ${r.planPath}\n`;
-        });
-        return section;
-    } catch (e) {
-        return '';
-    }
-}
-
-/**
  * Main session start hook function with enhanced visual output
  */
 async function onSessionStart(context) {
     // Global timeout wrapper to prevent hook from hanging
     // Config specifies 10s, we use 9.5s to leave 0.5s buffer for cleanup
     // With 1 git query + 1 recent query, expect ~9.5s total (4.5s each due to Python cold-start)
-    const HOOK_TIMEOUT = 9500; // 9.5 seconds (reduced Phase 0 from 2 to 1 query)
+    const HOOK_TIMEOUT = 9500; // 9.5 seconds
     const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('Hook timeout - completing early')), HOOK_TIMEOUT);
     });
@@ -749,52 +713,7 @@ async function executeSessionStart(context) {
         const showPhaseDetails = config.output?.showPhaseDetails !== false && config.output?.style !== 'balanced'; // Hide in balanced mode
 
         if (recentFirstMode) {
-            // Phase 0: Git Context Phase (NEW - highest priority for repository-aware memories)
-            if (gitContext && gitContext.developmentKeywords.keywords.length > 0) {
-                const maxGitMemories = config.gitAnalysis?.maxGitMemories || 3;
-                const gitQueries = buildGitContextQuery(projectContext, gitContext.developmentKeywords, context.userMessage);
-
-                if (verbose && showPhaseDetails && !cleanMode && gitQueries.length > 0) {
-                    console.log(`${CONSOLE_COLORS.GREEN}⚡ Phase 0${CONSOLE_COLORS.RESET} ${CONSOLE_COLORS.DIM}→${CONSOLE_COLORS.RESET} Git-aware memory search (${maxGitMemories} slots, 1 of ${gitQueries.length} queries for 8s timeout)`);
-                }
-                
-                // Execute git-context queries
-                for (const gitQuery of gitQueries.slice(0, 1)) { // Limit to top 1 query to stay within 8s timeout
-                    if (allMemories.length >= maxGitMemories) break;
-
-                    const gitMemories = await queryMemoryService(memoryClient, {
-                        semanticQuery: gitQuery.semanticQuery,
-                        limit: Math.min(maxGitMemories - allMemories.length, 3),
-                        timeFilter: 'last-2-weeks' // Focus on recent memories for git context
-                    }, config);
-                    
-                    if (gitMemories && gitMemories.length > 0) {
-                        // Mark these memories as git-context derived for scoring
-                        const markedMemories = gitMemories.map(mem => ({
-                            ...mem,
-                            _gitContextType: gitQuery.type,
-                            _gitContextSource: gitQuery.source,
-                            _gitContextWeight: config.gitAnalysis?.gitContextWeight || 1.2
-                        }));
-                        
-                        // Avoid duplicates from previous git queries
-                        const newGitMemories = markedMemories.filter(newMem => 
-                            !allMemories.some(existing => 
-                                existing.content && newMem.content && 
-                                existing.content.substring(0, 100) === newMem.content.substring(0, 100)
-                            )
-                        );
-                        
-                        allMemories.push(...newGitMemories);
-                        
-                        if (verbose && showMemoryDetails && !cleanMode && newGitMemories.length > 0) {
-                            console.log(`${CONSOLE_COLORS.GREEN}  📋 Git Query${CONSOLE_COLORS.RESET} ${CONSOLE_COLORS.DIM}→${CONSOLE_COLORS.RESET} [${gitQuery.type}] found ${newGitMemories.length} memories`);
-                        }
-                    }
-                }
-            }
-            
-            // Phase 1: Recent memories - high priority
+            // Phase 1: Recent memories - high priority (git keywords injected into semantic query below)
             const remainingSlotsAfterGit = Math.max(0, maxMemories - allMemories.length);
             if (remainingSlotsAfterGit > 0) {
                 // Build enhanced semantic query with git context
@@ -1125,15 +1044,6 @@ async function executeSessionStart(context) {
                 contentLengthConfig: config.contentLength
             });
 
-            // Append recent plans section (ambient context, no stub hop needed)
-            const recentPlansSection = await getRecentPlansSection(3);
-            if (recentPlansSection) {
-                contextMessage += recentPlansSection;
-                if (verbose && !cleanMode) {
-                    console.log(`${CONSOLE_COLORS.CYAN}📌 Recent Plans${CONSOLE_COLORS.RESET} ${CONSOLE_COLORS.DIM}→${CONSOLE_COLORS.RESET} injected (last 3)`);
-                }
-            }
-
             // Inject context into session
             if (context.injectSystemMessage) {
                 await context.injectSystemMessage(contextMessage);
@@ -1141,100 +1051,6 @@ async function executeSessionStart(context) {
                 // console.log would cause duplicate output in Claude Code
 
 
-                // Write detailed session context log file (Option 3)
-                try {
-                    const os = require('os');
-                    const logPath = path.join(os.homedir(), '.claude', 'last-session-context.txt');
-                    const recencyPercent = maxMemories > 0 ? ((recentCount / maxMemories) * 100).toFixed(0) : 0;
-
-                    let logContent = `Session Started: ${new Date().toISOString()}\n`;
-                    logContent += `Session ID: ${context.sessionId || 'unknown'}\n\n`;
-                    logContent += `=== Project Context ===\n`;
-                    logContent += `Project: ${projectContext.name}\n`;
-                    logContent += `Language: ${projectContext.language}\n`;
-                    if (projectContext.frameworks && projectContext.frameworks.length > 0) {
-                        logContent += `Frameworks: ${projectContext.frameworks.join(', ')}\n`;
-                    }
-                    if (projectContext.git) {
-                        logContent += `Git Branch: ${projectContext.git.branch || 'unknown'}\n`;
-                    }
-                    logContent += `\n=== Storage Backend ===\n`;
-                    if (storageInfo) {
-                        logContent += `Backend: ${storageInfo.backend}\n`;
-                        logContent += `Type: ${storageInfo.type}\n`;
-                        logContent += `Location: ${storageInfo.location}\n`;
-                        if (storageInfo.health.totalMemories > 0) {
-                            logContent += `Total Memories in DB: ${storageInfo.health.totalMemories}\n`;
-                        }
-                    }
-                    logContent += `\n=== Memory Statistics ===\n`;
-                    logContent += `Memories Loaded: ${maxMemories}\n`;
-                    logContent += `Recent (last week): ${recentCount} (${recencyPercent}%)\n`;
-
-                    if (gitContext) {
-                        logContent += `\n=== Git Context ===\n`;
-                        logContent += `Commits Analyzed: ${gitContext.commits.length}\n`;
-                        logContent += `Changelog Entries: ${gitContext.changelogEntries?.length || 0}\n`;
-                        logContent += `Top Keywords: ${gitContext.developmentKeywords.keywords.slice(0, 5).join(', ')}\n`;
-                    }
-
-                    if (topMemories.length > 0) {
-                        logContent += `\n=== Top Loaded Memories ===\n`;
-                        topMemories.slice(0, 3).forEach((m, idx) => {
-                            const preview = m.content ? m.content.substring(0, 150).replace(/\n/g, ' ') : 'No content';
-                            const ageInfo = m.created_at_iso ? ` (${Math.floor((now - new Date(m.created_at_iso)) / (1000 * 60 * 60 * 24))}d ago)` : '';
-                            logContent += `\n${idx + 1}. Score: ${(m.relevanceScore * 100).toFixed(0)}%${ageInfo}\n`;
-                            logContent += `   ${preview}...\n`;
-                        });
-                    }
-
-                    await fs.writeFile(logPath, logContent, 'utf8');
-                } catch (error) {
-                    // Silently fail - log file is nice-to-have, not critical
-                    if (verbose && showMemoryDetails) {
-                        console.warn(`[Memory Hook] Failed to write log file: ${error.message}`);
-                    }
-                }
-
-                // C1: Write injected memory hashes for implicit feedback loop
-                try {
-                    const os = require('os');
-                    const injectedHashes = topMemories
-                        .filter(m => m.content_hash)
-                        .map(m => m.content_hash);
-                    if (injectedHashes.length > 0) {
-                        const hashesPath = path.join(os.tmpdir(), 'claude-injected-memories.json');
-                        await fs.writeFile(hashesPath, JSON.stringify({
-                            session_id: context.sessionId || 'unknown',
-                            timestamp: new Date().toISOString(),
-                            hashes: injectedHashes
-                        }, null, 2), 'utf8');
-                    }
-                } catch (error) {
-                    // Silently fail — feedback loop is optional
-                }
-
-                // Write status line cache file (Option 4)
-                try {
-                    const cachePath = path.join(__dirname, '../utilities/session-cache.json');
-                    const cacheData = {
-                        timestamp: new Date().toISOString(),
-                        sessionId: context.sessionId || 'unknown',
-                        project: projectContext.name,
-                        memoriesLoaded: maxMemories,
-                        recentCount: recentCount,
-                        gitCommits: gitContext ? gitContext.commits.length : 0,
-                        gitKeywords: gitContext ? gitContext.developmentKeywords.keywords.slice(0, 3) : [],
-                        storageBackend: storageInfo ? storageInfo.backend : 'unknown'
-                    };
-
-                    await fs.writeFile(cachePath, JSON.stringify(cacheData, null, 2), 'utf8');
-                } catch (error) {
-                    // Silently fail - status line cache is optional
-                    if (verbose && showMemoryDetails) {
-                        console.warn(`[Memory Hook] Failed to write status line cache: ${error.message}`);
-                    }
-                }
             } else if (verbose && !cleanMode) {
                 // Fallback: log context for manual copying with styling
                 console.log(`\n${CONSOLE_COLORS.CYAN}╭──────────────────────────────────────────╮${CONSOLE_COLORS.RESET}`);
