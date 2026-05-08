@@ -27,6 +27,7 @@ from .clustering import SemanticClusteringEngine
 from .compression import SemanticCompressionEngine
 from .forgetting import ControlledForgettingEngine
 from .health import ConsolidationHealthMonitor
+from .lint import SemanticLintEngine
 from ..models.memory import Memory
 from ..storage.graph import GraphStorage
 from ..config import GRAPH_STORAGE_MODE
@@ -124,7 +125,8 @@ class DreamInspiredConsolidator:
         'clustering': ['weekly', 'monthly', 'quarterly'],
         'associations': ['weekly', 'monthly'],
         'compression': ['weekly', 'monthly', 'quarterly'],
-        'forgetting': ['monthly', 'quarterly', 'yearly']
+        'forgetting': ['monthly', 'quarterly', 'yearly'],
+        'lint': ['daily', 'weekly', 'monthly', 'quarterly', 'yearly'],
     }
 
     def __init__(self, storage: StorageProtocol, config: ConsolidationConfig):
@@ -138,6 +140,7 @@ class DreamInspiredConsolidator:
         self.clustering_engine = SemanticClusteringEngine(config)
         self.compression_engine = SemanticCompressionEngine(config)
         self.forgetting_engine = ControlledForgettingEngine(config)
+        self.lint_engine = SemanticLintEngine(config)
 
         # Initialize health monitoring
         self.health_monitor = ConsolidationHealthMonitor(config)
@@ -265,6 +268,42 @@ class DreamInspiredConsolidator:
 
                     # Store compressed memories and update originals
                     await self._handle_compression_results(compression_results)
+
+                # 5.5. Semantic lint (runs every horizon)
+                if check_horizon_requirements(time_horizon, 'lint', self.ENABLED_PHASES):
+                    self.logger.info(f"🔍 Phase 5.5: Running semantic lint on {len(memories)} memories...")
+                    performance_start = time.time()
+                    graph_counts = await self._get_memory_connections()
+                    access_patterns_lint = await self._get_access_patterns()
+                    lint_report = await self.lint_engine.process(
+                        memories,
+                        graph_counts=graph_counts,
+                        access_patterns=access_patterns_lint,
+                    )
+                    self.logger.info(
+                        f"✓ Lint completed in {time.time() - performance_start:.1f}s: "
+                        f"{lint_report.total_flags} flags "
+                        f"({len(lint_report.contradictions)} contradictions, "
+                        f"{len(lint_report.stale_pairs)} stale, "
+                        f"{len(lint_report.orphans)} orphans)"
+                    )
+                    if lint_report.total_flags > 0:
+                        flagged: dict = {}
+                        for flag in (lint_report.contradictions + lint_report.stale_pairs + lint_report.orphans):
+                            flagged.setdefault(flag.memory_hash, []).append({
+                                'check_type': flag.check_type,
+                                'severity': flag.severity,
+                                'detail': flag.detail,
+                                'paired_hash': flag.paired_hash,
+                            })
+                        mem_map = {m.content_hash: m for m in memories}
+                        to_update = []
+                        for hash_, flags in flagged.items():
+                            if hash_ in mem_map:
+                                mem_map[hash_].metadata['lint_flags'] = flags
+                                to_update.append(mem_map[hash_])
+                        if to_update:
+                            await self.storage.update_memories_batch(to_update)
 
                 # 6. Controlled forgetting (if enabled and appropriate)
                 forgetting_results = []
@@ -557,17 +596,22 @@ class DreamInspiredConsolidator:
         )
     
     async def _handle_compression_results(self, compression_results) -> None:
-        """Handle storage of compressed memories and linking to originals."""
+        """Handle storage of compressed memories and archiving originals."""
         for result in compression_results:
             # Store compressed memory
             success, _ = await self.storage.store(result.compressed_memory)
             if not success:
                 logger.warning(f"Failed to store compressed memory")
-            
-            # Update original memories with compression links
-            # This could involve adding metadata pointing to the compressed version
-            # Implementation depends on how the storage backend handles relationships
-            pass
+                continue
+
+            # Soft-delete originals to prevent additive duplicates
+            # delete_memory() uses soft-delete (sets deleted_at), preserving tombstones
+            source_hashes = result.compressed_memory.metadata.get('source_memory_hashes', [])
+            for source_hash in source_hashes:
+                try:
+                    await self.storage.delete_memory(source_hash)
+                except Exception as e:
+                    logger.warning(f"Failed to archive source memory {source_hash}: {e}")
     
     async def _apply_forgetting_results(self, forgetting_results) -> None:
         """Apply forgetting results to the storage backend."""

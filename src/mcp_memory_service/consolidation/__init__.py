@@ -29,11 +29,13 @@ from .forgetting import ControlledForgettingEngine
 from .consolidator import DreamInspiredConsolidator
 from .scheduler import ConsolidationScheduler
 from .health import ConsolidationHealthMonitor, HealthStatus, HealthMetric, HealthAlert
+from .lint import SemanticLintEngine, LintReport, LintFlag
+from .compilation import CompilationEngine, CompilResult
 
 __all__ = [
     'ConsolidationBase',
     'ExponentialDecayCalculator',
-    'CreativeAssociationEngine', 
+    'CreativeAssociationEngine',
     'SemanticClusteringEngine',
     'SemanticCompressionEngine',
     'ControlledForgettingEngine',
@@ -42,5 +44,10 @@ __all__ = [
     'ConsolidationHealthMonitor',
     'HealthStatus',
     'HealthMetric',
-    'HealthAlert'
+    'HealthAlert',
+    'SemanticLintEngine',
+    'LintReport',
+    'LintFlag',
+    'CompilationEngine',
+    'CompilResult',
 ]

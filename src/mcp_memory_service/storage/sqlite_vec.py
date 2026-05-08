@@ -543,6 +543,37 @@ SOLUTIONS:
                     except Exception as e:
                         logger.warning(f"Migration check for deleted_at (non-fatal): {e}")
 
+                    # Migration: Add memory_graph table for graph-based association storage
+                    try:
+                        cursor = self.conn.execute(
+                            "SELECT name FROM sqlite_master WHERE type='table' AND name='memory_graph'"
+                        )
+                        if not cursor.fetchone():
+                            logger.info("Migrating database: Adding memory_graph table...")
+                            self.conn.execute('''
+                                CREATE TABLE IF NOT EXISTS memory_graph (
+                                    source_hash TEXT NOT NULL,
+                                    target_hash TEXT NOT NULL,
+                                    similarity REAL NOT NULL,
+                                    connection_types TEXT NOT NULL,
+                                    metadata TEXT,
+                                    created_at REAL NOT NULL,
+                                    PRIMARY KEY (source_hash, target_hash)
+                                )
+                            ''')
+                            self.conn.execute(
+                                'CREATE INDEX IF NOT EXISTS idx_graph_source ON memory_graph(source_hash)'
+                            )
+                            self.conn.execute(
+                                'CREATE INDEX IF NOT EXISTS idx_graph_target ON memory_graph(target_hash)'
+                            )
+                            self.conn.commit()
+                            logger.info("Migration complete: memory_graph table added")
+                        else:
+                            logger.debug("Migration check: memory_graph table already exists")
+                    except Exception as e:
+                        logger.warning(f"Migration check for memory_graph (non-fatal): {e}")
+
                     await self._initialize_embedding_model()
                     self._initialized = True
                     logger.info(f"SQLite-vec storage initialized successfully (existing database) with embedding dimension: {self.embedding_dimension}")
@@ -692,6 +723,25 @@ SOLUTIONS:
             self.conn.execute('CREATE INDEX IF NOT EXISTS idx_created_at ON memories(created_at)')
             self.conn.execute('CREATE INDEX IF NOT EXISTS idx_memory_type ON memories(memory_type)')
             self.conn.execute('CREATE INDEX IF NOT EXISTS idx_deleted_at ON memories(deleted_at)')
+
+            # Create memory_graph table for graph-based association storage
+            self.conn.execute('''
+                CREATE TABLE IF NOT EXISTS memory_graph (
+                    source_hash TEXT NOT NULL,
+                    target_hash TEXT NOT NULL,
+                    similarity REAL NOT NULL,
+                    connection_types TEXT NOT NULL,
+                    metadata TEXT,
+                    created_at REAL NOT NULL,
+                    PRIMARY KEY (source_hash, target_hash)
+                )
+            ''')
+            self.conn.execute(
+                'CREATE INDEX IF NOT EXISTS idx_graph_source ON memory_graph(source_hash)'
+            )
+            self.conn.execute(
+                'CREATE INDEX IF NOT EXISTS idx_graph_target ON memory_graph(target_hash)'
+            )
 
             # Mark as initialized to prevent re-initialization
             self._initialized = True
