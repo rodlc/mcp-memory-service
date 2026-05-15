@@ -243,7 +243,6 @@ const COLORS = {
 async function detectProjectContext(directory = process.cwd()) {
     try {
         const directoryName = path.basename(directory);
-        console.log(`${COLORS.BLUE}📂 Project Detector${COLORS.RESET} ${COLORS.DIM}→${COLORS.RESET} Analyzing ${COLORS.BRIGHT}${directoryName}${COLORS.RESET}`);
         
         // Get basic directory information
         
@@ -285,8 +284,6 @@ async function detectProjectContext(directory = process.cwd()) {
         const confidencePercent = (context.confidence * 100).toFixed(0);
         const confidenceColor = context.confidence > 0.8 ? COLORS.GREEN : 
                                context.confidence > 0.6 ? COLORS.YELLOW : COLORS.GRAY;
-        
-        console.log(`${COLORS.BLUE}📊 Detection Result${COLORS.RESET} ${COLORS.DIM}→${COLORS.RESET} ${COLORS.BRIGHT}${context.name}${COLORS.RESET} ${COLORS.GRAY}(${context.language})${COLORS.RESET} ${COLORS.DIM}•${COLORS.RESET} ${confidenceColor}${confidencePercent}%${COLORS.RESET}`);
         
         return context;
         

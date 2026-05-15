@@ -408,7 +408,6 @@ class MemoryClient {
                     }
                 });
 
-                console.log(`[Memory Client] Tag-first filter: ${memories.length} tagged → ${filtered.length} within ${timeQuery}`);
                 return filtered.slice(0, limit);
             } catch (error) {
                 // If tag search fails, fall back to time-only search
