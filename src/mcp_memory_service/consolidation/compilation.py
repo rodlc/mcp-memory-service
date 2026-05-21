@@ -172,48 +172,12 @@ class CompilationEngine(ConsolidationBase):
         )
 
     async def _check_ollama(self) -> bool:
-        """Lazy-check Ollama availability (cached per instance)."""
-        if self._ollama_available is not None:
-            return self._ollama_available
-        try:
-            req = urllib.request.Request(
-                self.llm_endpoint.replace('/api/generate', '/api/tags'),
-                method='GET',
-            )
-            loop = asyncio.get_event_loop()
-            await loop.run_in_executor(
-                None, lambda: urllib.request.urlopen(req, timeout=3).close()
-            )
-            self._ollama_available = True
-        except Exception:
-            self._ollama_available = False
-        return self._ollama_available
+        """Ollama offloading disabled — use /ollama skill for batch synthesis."""
+        return False
 
     async def _call_ollama(self, prompt: str) -> Optional[str]:
-        """Call Ollama generate endpoint synchronously (scheduler context)."""
-        payload = json.dumps({
-            'model': self.llm_model,
-            'prompt': prompt,
-            'stream': False,
-        }).encode()
-        try:
-            req = urllib.request.Request(
-                self.llm_endpoint,
-                data=payload,
-                headers={'Content-Type': 'application/json'},
-                method='POST',
-            )
-
-            def _do_request():
-                with urllib.request.urlopen(req, timeout=120) as resp:
-                    return json.loads(resp.read())
-
-            loop = asyncio.get_event_loop()
-            data = await loop.run_in_executor(None, _do_request)
-            return data.get('response', '').strip() or None
-        except Exception as e:
-            logger.warning(f"Compilation: Ollama call failed: {e}")
-            return None
+        """Ollama offloading disabled — use /ollama skill for batch synthesis."""
+        return None
 
     def _group_by_topic(self, memories: List[Memory]) -> Dict[str, List[Memory]]:
         """Group session-stubs by their primary non-trivial tag."""

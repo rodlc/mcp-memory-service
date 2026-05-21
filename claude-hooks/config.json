@@ -88,52 +88,14 @@
     "minSessionLength": 100,
     "minConfidence": 0.1
   },
-  "autoCapture": {
-    "enabled": true,
-    "minLength": 300,
-    "maxLength": 4000,
-    "patterns": [
-      "decision",
-      "error",
-      "learning",
-      "implementation",
-      "important",
-      "code"
-    ],
-    "debugMode": false,
-    "userOverrides": {
-      "forceRemember": "#remember",
-      "forceSkip": "#skip",
-      "applyTo": [
-        "auto-capture",
-        "session-start",
-        "mid-conversation",
-        "session-end"
-      ]
-    }
-  },
   "hooks": {
     "sessionStart": {
       "enabled": true,
       "priority": "high"
-    },
-    "midConversation": {
-      "timeout": 8000,
-      "priority": "high"
-    },
-    "sessionEnd": {
-      "enabled": true,
-      "timeout": 15000,
-      "priority": "normal"
-    },
-    "topicChange": {
-      "enabled": false,
-      "timeout": 5000,
-      "priority": "low"
     }
   },
   "gitAnalysis": {
-    "enabled": true,
+    "enabled": false,
     "commitLookback": 14,
     "maxCommits": 10,
     "includeChangelog": true,
@@ -163,12 +125,6 @@
     "manyMemories": 300,
     "fewMemories": 500,
     "veryFewMemories": 800
-  },
-  "naturalTriggers": {
-    "enabled": true,
-    "triggerThreshold": 0.6,
-    "cooldownPeriod": 30000,
-    "maxMemoriesPerTrigger": 5
   },
   "performance": {
     "defaultProfile": "balanced",
@@ -206,16 +162,6 @@
         "description": "Full memory awareness, accept higher latency"
       }
     }
-  },
-  "conversationMonitor": {
-    "contextWindow": 10,
-    "enableCaching": true,
-    "maxCacheSize": 100
-  },
-  "patternDetector": {
-    "sensitivity": 0.7,
-    "adaptiveLearning": true,
-    "learningRate": 0.05
   },
   "logging": {
     "level": "warn",
