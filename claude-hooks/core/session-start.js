@@ -492,7 +492,22 @@ async function executeSessionStart(context) {
                         const port = require('fs').readFileSync(require('path').join(cwd, '.port'), 'utf8').trim();
                         portInfo = `, port: ${port}`;
                     } catch (e) { /* no .port file — silent */ }
-                    console.log(`\n📍 Worktree '${wtName}' on ${repoName} (branch: ${branch}, last commit: ${lastCommit}${portInfo}). New task? → EnterWorktree.`);
+
+                    if (branch.startsWith('worktree-')) {
+                        console.log(`\n📍 Worktree '${wtName}' on ${repoName} — landing branch (branch: ${branch}). Create a task branch: git checkout -b feat-xxx`);
+                    } else {
+                        let isMerged = false;
+                        try {
+                            execSync('git merge-base --is-ancestor HEAD origin/main', { cwd, stdio: 'ignore' });
+                            isMerged = true;
+                        } catch (e) { /* not merged, or origin/main unavailable */ }
+
+                        if (isMerged) {
+                            console.log(`\n📍 Worktree '${wtName}' on ${repoName} — branch merged (branch: ${branch}). Create a new task branch: git checkout -b feat-xxx`);
+                        } else {
+                            console.log(`\n📍 Worktree '${wtName}' on ${repoName} (branch: ${branch}, last commit: ${lastCommit}${portInfo}). New task? → EnterWorktree.`);
+                        }
+                    }
                 }
             }
         } catch (e) { /* not a git repo or git unavailable */ }
