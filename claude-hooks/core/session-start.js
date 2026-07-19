@@ -498,9 +498,9 @@ async function executeSessionStart(context) {
                     } else {
                         let isMerged = false;
                         try {
-                            execSync('git merge-base --is-ancestor HEAD origin/main', { cwd, stdio: 'ignore' });
-                            isMerged = true;
-                        } catch (e) { /* not merged, or origin/main unavailable */ }
+                            const track = execSync(`git for-each-ref --format="%(upstream:track)" "refs/heads/${branch}"`, { encoding: 'utf8', cwd }).trim();
+                            isMerged = track === '[gone]';
+                        } catch (e) { /* no upstream tracking info available */ }
 
                         if (isMerged) {
                             console.log(`\n📍 Worktree '${wtName}' on ${repoName} — branch merged (branch: ${branch}). Create a new task branch: git checkout -b feat-xxx`);
