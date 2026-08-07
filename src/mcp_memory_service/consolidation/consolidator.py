@@ -106,7 +106,7 @@ def filter_memories_by_age(memories: List[Memory], cutoff_date: datetime) -> Lis
     """
     return [
         m for m in memories
-        if m.created_at and datetime.utcfromtimestamp(m.created_at) < cutoff_date
+        if m.created_at and datetime.fromtimestamp(m.created_at, tz=timezone.utc) < cutoff_date
     ]
 
 class DreamInspiredConsolidator:
@@ -602,7 +602,7 @@ class DreamInspiredConsolidator:
             # Store compressed memory
             success, _ = await self.storage.store(result.compressed_memory)
             if not success:
-                logger.warning(f"Failed to store compressed memory")
+                self.logger.warning(f"Failed to store compressed memory")
                 continue
 
             # Soft-delete originals to prevent additive duplicates
@@ -610,21 +610,21 @@ class DreamInspiredConsolidator:
             source_hashes = result.compressed_memory.metadata.get('source_memory_hashes', [])
             for source_hash in source_hashes:
                 try:
-                    await self.storage.delete_memory(source_hash)
+                    await self.storage.delete(source_hash)
                 except Exception as e:
-                    logger.warning(f"Failed to archive source memory {source_hash}: {e}")
+                    self.logger.warning(f"Failed to archive source memory {source_hash}: {e}")
     
     async def _apply_forgetting_results(self, forgetting_results) -> None:
         """Apply forgetting results to the storage backend."""
         for result in forgetting_results:
             if result.action_taken == 'deleted':
-                await self.storage.delete_memory(result.memory_hash)
+                await self.storage.delete(result.memory_hash)
             elif result.action_taken == 'compressed' and result.compressed_version:
                 # Replace original with compressed version
-                await self.storage.delete_memory(result.memory_hash)
+                await self.storage.delete(result.memory_hash)
                 success, _ = await self.storage.store(result.compressed_version)
                 if not success:
-                    logger.warning(f"Failed to store compressed version for {result.memory_hash}")
+                    self.logger.warning(f"Failed to store compressed version for {result.memory_hash}")
             # 'archived' memories are handled by the forgetting engine
     
     async def _update_consolidation_timestamps(self, memories: List[Memory]) -> None:
@@ -759,7 +759,7 @@ class DreamInspiredConsolidator:
                 total_size += len(memory.content)
                 
                 if memory.created_at:
-                    age_days = (now - datetime.utcfromtimestamp(memory.created_at)).days
+                    age_days = (now - datetime.fromtimestamp(memory.created_at, tz=timezone.utc).replace(tzinfo=None)).days
                     if age_days > 30:
                         old_memories += 1
             

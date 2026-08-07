@@ -17,7 +17,7 @@
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 from ..models.memory import Memory
@@ -128,7 +128,7 @@ class ConsolidationBase(ABC):
         ref_time = reference_time or datetime.now()
         
         if memory.created_at:
-            created_dt = datetime.utcfromtimestamp(memory.created_at)
+            created_dt = datetime.fromtimestamp(memory.created_at, tz=timezone.utc).replace(tzinfo=None)
             return (ref_time - created_dt).days
         elif memory.timestamp:
             return (ref_time - memory.timestamp).days

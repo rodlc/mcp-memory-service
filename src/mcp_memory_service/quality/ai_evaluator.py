@@ -7,6 +7,7 @@ import logging
 from typing import Optional
 from .config import QualityConfig
 from .onnx_ranker import get_onnx_ranker_model, ONNXRankerModel
+from .heuristic_scorer import HeuristicScorer
 from .implicit_signals import ImplicitSignalsEvaluator
 from ..models.memory import Memory
 
@@ -32,6 +33,7 @@ class QualityEvaluator:
         # Initialize tier components
         self._onnx_ranker: Optional[ONNXRankerModel] = None
         self._onnx_models: dict = {}  # For fallback mode (multiple models)
+        self._heuristic_scorer = HeuristicScorer()
         self._implicit_evaluator = ImplicitSignalsEvaluator()
         self._initialized = False
 
@@ -108,8 +110,14 @@ class QualityEvaluator:
         provider_used = None
         score = None
 
+        # Tier 0: Heuristic (zero-dependency, instant)
+        if self.config.ai_provider == 'heuristic':
+            score = self._heuristic_scorer.score(memory)
+            provider_used = 'heuristic'
+            logger.debug(f"Heuristic score: {score:.3f}")
+
         # Tier 1: Local ONNX (if available)
-        if self.config.ai_provider in ['local', 'auto']:
+        elif self.config.ai_provider in ['local', 'auto']:
             # Check if fallback mode enabled with multiple models
             if self.config.fallback_enabled and len(self._onnx_models) >= 2:
                 try:

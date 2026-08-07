@@ -12,7 +12,7 @@ class QualityConfig:
     enabled: bool = True
 
     # AI provider selection
-    # Options: 'local' (ONNX only), 'groq', 'gemini', 'auto' (try all), 'none' (implicit only)
+    # Options: 'local' (ONNX only), 'heuristic', 'groq', 'gemini', 'auto' (try all), 'none' (implicit only)
     ai_provider: str = 'local'
 
     # Local ONNX model settings
@@ -52,7 +52,7 @@ class QualityConfig:
 
     def validate(self) -> bool:
         """Validate configuration settings."""
-        if self.ai_provider not in ['local', 'groq', 'gemini', 'auto', 'none']:
+        if self.ai_provider not in ['local', 'heuristic', 'groq', 'gemini', 'auto', 'none']:
             raise ValueError(f"Invalid ai_provider: {self.ai_provider}")
 
         if self.local_device not in ['auto', 'cpu', 'cuda', 'mps', 'directml']:
