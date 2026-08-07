@@ -192,6 +192,10 @@ async def store(
     # Get storage instance
     storage = await get_storage_async()
 
+    # Score at store-time
+    from ..quality.heuristic_scorer import HeuristicScorer
+    memory.metadata["quality_score"] = HeuristicScorer().score(memory)
+
     # Store memory
     success, message = await storage.store(memory)
 

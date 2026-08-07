@@ -24,8 +24,11 @@ from ..storage.base import MemoryStorage
 from ..models.memory import Memory
 from ..utils.content_splitter import split_content
 from ..utils.hashing import generate_content_hash
+from ..quality.heuristic_scorer import HeuristicScorer
 
 logger = logging.getLogger(__name__)
+
+_heuristic_scorer = HeuristicScorer()
 
 
 def normalize_tags(tags: Union[str, List[str], None]) -> List[str]:
@@ -327,6 +330,8 @@ class MemoryService:
                         metadata=chunk_metadata
                     )
 
+                    memory.metadata["quality_score"] = _heuristic_scorer.score(memory)
+
                     success, message = await self.storage.store(memory)
                     if success:
                         stored_memories.append(self._format_memory_response(memory))
@@ -358,6 +363,8 @@ class MemoryService:
                     memory_type=memory_type,
                     metadata=final_metadata
                 )
+
+                memory.metadata["quality_score"] = _heuristic_scorer.score(memory)
 
                 success, message = await self.storage.store(memory)
 

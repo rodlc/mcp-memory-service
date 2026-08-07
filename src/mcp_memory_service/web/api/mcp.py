@@ -260,7 +260,10 @@ async def handle_tool_call(storage, tool_name: str, arguments: Dict[str, Any]) -
             memory_type=memory_type,
             metadata=metadata
         )
-        
+
+        from mcp_memory_service.quality.heuristic_scorer import HeuristicScorer
+        memory.metadata["quality_score"] = HeuristicScorer().score(memory)
+
         success, message = await storage.store(memory)
         
         return {
