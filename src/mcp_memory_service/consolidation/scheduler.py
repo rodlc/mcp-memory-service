@@ -69,7 +69,7 @@ class ConsolidationScheduler:
                 job_defaults={
                     'coalesce': True,  # Combine multiple pending executions
                     'max_instances': 1,  # Only one instance of each job at a time
-                    'misfire_grace_time': 3600  # 1 hour grace period for missed jobs
+                    'misfire_grace_time': 43200  # 12 hour grace period (laptop sleep)
                 }
             )
             
