@@ -1,14 +1,24 @@
 {
+<<<<<<< Updated upstream
   "timestamp": "2026-04-17T13:39:29.452Z",
+=======
+  "timestamp": "2026-04-11T14:04:27.712Z",
+>>>>>>> Stashed changes
   "sessionId": "test-session",
   "project": "workspace",
   "memoriesLoaded": 5,
   "recentCount": 2,
   "gitCommits": 10,
   "gitKeywords": [
+<<<<<<< Updated upstream
     "chore",
     "fix",
     "memory"
+=======
+    "fix",
+    "docs",
+    "mcp"
+>>>>>>> Stashed changes
   ],
   "storageBackend": "local_service"
 }
