@@ -625,7 +625,8 @@ class DreamInspiredConsolidator:
                 success, _ = await self.storage.store(result.compressed_version)
                 if not success:
                     self.logger.warning(f"Failed to store compressed version for {result.memory_hash}")
-            # 'archived' memories are handled by the forgetting engine
+            elif result.action_taken == 'archived':
+                await self.storage.delete(result.memory_hash)
     
     async def _update_consolidation_timestamps(self, memories: List[Memory]) -> None:
         """Mark memories with last_consolidated_at timestamp for incremental mode using batch updates."""
