@@ -100,7 +100,7 @@ function planCacheHealth() {
 
   return warnings.length
     ? `⚠️ plan-cache: ${rowCount} plans — ${warnings.join(', ')}`
-    : `📊 plan-cache: ${rowCount} plans`;
+    : `📋 plan-cache: ${rowCount} plans`;
 }
 
 function claudeVersion() {
