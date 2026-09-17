@@ -1,18 +1,12 @@
 #!/usr/bin/env node
-/**
- * SessionStart hook — emits worktree context + plan-cache health as a systemMessage.
- * systemMessage is top-level (reaches both model and user); additionalContext (nested)
- * would reach the model only. Plain stdout would be silently dropped for structured needs.
- */
-
-const { execSync } = require('child_process');
+const { execSync, spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
 function readStdin() {
   return new Promise((resolve) => {
     let data = '';
-    const timer = setTimeout(() => resolve({}), 1500);
+    const timer = setTimeout(() => resolve({}), 200);
     process.stdin.on('data', (c) => (data += c));
     process.stdin.on('end', () => {
       clearTimeout(timer);
@@ -20,6 +14,25 @@ function readStdin() {
     });
     process.stdin.resume();
   });
+}
+
+function formatCacheAge(ms) {
+  const s = Math.floor(ms / 1000);
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h`;
+  return `${Math.floor(h / 24)}d`;
+}
+
+function semverCompare(a, b) {
+  const pa = a.split('.').map(Number);
+  const pb = b.split('.').map(Number);
+  for (let i = 0; i < 3; i++) {
+    if ((pa[i] || 0) !== (pb[i] || 0)) return (pa[i] || 0) - (pb[i] || 0);
+  }
+  return 0;
 }
 
 function worktreeContext(cwd) {
@@ -90,11 +103,125 @@ function planCacheHealth() {
     : `✓ plan-cache: ${rowCount} plans`;
 }
 
+function claudeVersion() {
+  let current;
+  try {
+    const raw = execSync('claude --version', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+    current = raw.split(/\s+/)[0];
+  } catch { return null; }
+  if (!current) return null;
+
+  const MIN_VERSION = '2.1.90';
+  if (semverCompare(current, MIN_VERSION) < 0) {
+    return `🛡️ Claude Code v${current} < v${MIN_VERSION} (CVE-2025-54794) ⇒ claude update`;
+  }
+
+  const cacheFile = path.join(process.env.HOME, '.cache/cc-latest-version');
+  let latest = null;
+  let cacheAge = Infinity;
+
+  try {
+    const stat = fs.statSync(cacheFile);
+    cacheAge = Date.now() - stat.mtimeMs;
+    if (cacheAge < 86400000) {
+      latest = fs.readFileSync(cacheFile, 'utf8').trim();
+    }
+  } catch {}
+
+  if (cacheAge >= 86400000) {
+    const child = spawn('sh', ['-c', `npm view @anthropic-ai/claude-code version > "${cacheFile}" 2>/dev/null`], {
+      detached: true, stdio: 'ignore',
+    });
+    child.unref();
+    if (!latest) {
+      try { latest = fs.readFileSync(cacheFile, 'utf8').trim(); } catch {}
+    }
+  }
+
+  if (latest && semverCompare(current, latest) < 0) {
+    let claudeBin;
+    try { claudeBin = execSync('which claude', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim(); } catch {}
+    const updateCmd = claudeBin && claudeBin.includes('/mise/') ? 'mise upgrade claude-code' : 'claude update';
+    const age = cacheAge < 86400000 ? ` [${formatCacheAge(cacheAge)}]` : '';
+    return `🤖 Claude Code v${current} → v${latest} ⇒ ${updateCmd}${age}`;
+  }
+
+  return null;
+}
+
+function scheduledAgents() {
+  const cacheFile = path.join(process.env.HOME, '.cache/claude-jobs');
+  try {
+    const data = JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
+    const { planned = 0, running = 0, failed = 0, succeeded = 0 } = data;
+    if (planned === 0 && running === 0 && failed === 0 && succeeded === 0) return null;
+
+    const parts = [];
+    if (failed > 0) parts.push(`${failed} failed`);
+    if (running > 0) parts.push(`${running} running`);
+    if (succeeded > 0) parts.push(`${succeeded} succeeded`);
+    if (planned > 0) parts.push(`${planned} planned`);
+
+    const age = Date.now() - fs.statSync(cacheFile).mtimeMs;
+    return `🦾 Claude Jobs ${parts.join(', ')} ⇒ claude-jobs [${formatCacheAge(age)}]`;
+  } catch { return null; }
+}
+
+function driftCheck() {
+  const ws = process.env.WORKSPACE_DIR || path.join(process.env.HOME, 'Code/rodlc/workspace');
+  const home = process.env.HOME;
+  const links = [
+    path.join(home, '.claude/settings.json'),
+    path.join(home, '.claude/CLAUDE.md'),
+    path.join(home, '.claude/statusline.sh'),
+  ];
+
+  try {
+    const hooksDir = path.join(home, '.claude/hooks');
+    for (const f of fs.readdirSync(hooksDir)) {
+      if (f.endsWith('.sh')) links.push(path.join(hooksDir, f));
+    }
+    const coreDir = path.join(hooksDir, 'core');
+    if (fs.existsSync(coreDir)) links.push(coreDir);
+  } catch {}
+
+  for (const link of links) {
+    try {
+      const s = fs.lstatSync(link);
+      if (!s.isSymbolicLink()) continue;
+      const target = fs.readlinkSync(link);
+      if (!fs.existsSync(link) || !target.startsWith(ws)) {
+        return `🌊 claude-config drifting symlinks ⇒ df-install workspace`;
+      }
+    } catch {}
+  }
+
+  try {
+    const skillsDir = path.join(home, '.claude/skills');
+    for (const f of fs.readdirSync(skillsDir)) {
+      const entry = path.join(skillsDir, f);
+      try {
+        if (!fs.lstatSync(entry).isSymbolicLink()) {
+          return `🌊 claude-config skill not symlinked ⇒ df-install workspace`;
+        }
+      } catch {}
+    }
+  } catch {}
+
+  return null;
+}
+
 async function main() {
   const input = await readStdin();
   const cwd = input.cwd || process.cwd();
 
-  const parts = [worktreeContext(cwd), planCacheHealth()].filter(Boolean);
+  const parts = [
+    worktreeContext(cwd),
+    planCacheHealth(),
+    claudeVersion(),
+    scheduledAgents(),
+    driftCheck(),
+  ].filter(Boolean);
   if (parts.length) {
     process.stdout.write(JSON.stringify({ systemMessage: parts.join('\n') }));
   }
