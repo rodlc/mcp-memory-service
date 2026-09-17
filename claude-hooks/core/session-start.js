@@ -69,12 +69,12 @@ function planCacheHealth() {
   const BACKUP_MAX_AGE_H = 48;
   const WAL_RATIO_WARN = 70;
 
-  if (!fs.existsSync(DB)) return '⚠ plan-cache.db not found';
+  if (!fs.existsSync(DB)) return '⚠️ plan-cache.db not found';
 
   let rowCount;
   try {
     rowCount = execSync(`sqlite3 "${DB}" "SELECT count(*) FROM plans;"`, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
-  } catch { return '⚠ plan-cache.db unreadable (corrupt or locked)'; }
+  } catch { return '⚠️ plan-cache.db unreadable (corrupt or locked)'; }
 
   const warnings = [];
   try {
@@ -99,8 +99,8 @@ function planCacheHealth() {
   } catch {}
 
   return warnings.length
-    ? `⚠ plan-cache: ${rowCount} plans — ${warnings.join(', ')}`
-    : `✓ plan-cache: ${rowCount} plans`;
+    ? `⚠️ plan-cache: ${rowCount} plans — ${warnings.join(', ')}`
+    : `📊 plan-cache: ${rowCount} plans`;
 }
 
 function claudeVersion() {
