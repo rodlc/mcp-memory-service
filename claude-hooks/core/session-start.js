@@ -168,47 +168,13 @@ function scheduledAgents() {
 }
 
 function driftCheck() {
-  const ws = process.env.WORKSPACE_DIR || path.join(process.env.HOME, 'Code/rodlc/workspace');
-  const home = process.env.HOME;
-  const links = [
-    path.join(home, '.claude/settings.json'),
-    path.join(home, '.claude/CLAUDE.md'),
-    path.join(home, '.claude/statusline.sh'),
-  ];
-
+  const cacheFile = path.join(process.env.HOME, '.cache/claude-drift');
   try {
-    const hooksDir = path.join(home, '.claude/hooks');
-    for (const f of fs.readdirSync(hooksDir)) {
-      if (f.endsWith('.sh')) links.push(path.join(hooksDir, f));
-    }
-    const coreDir = path.join(hooksDir, 'core');
-    if (fs.existsSync(coreDir)) links.push(coreDir);
-  } catch {}
-
-  for (const link of links) {
-    try {
-      const s = fs.lstatSync(link);
-      if (!s.isSymbolicLink()) continue;
-      const target = fs.readlinkSync(link);
-      if (!fs.existsSync(link) || !target.startsWith(ws)) {
-        return `🌊 claude-config drifting symlinks ⇒ df-install workspace`;
-      }
-    } catch {}
-  }
-
-  try {
-    const skillsDir = path.join(home, '.claude/skills');
-    for (const f of fs.readdirSync(skillsDir)) {
-      const entry = path.join(skillsDir, f);
-      try {
-        if (!fs.lstatSync(entry).isSymbolicLink()) {
-          return `🌊 claude-config skill not symlinked ⇒ df-install workspace`;
-        }
-      } catch {}
-    }
-  } catch {}
-
-  return null;
+    const content = fs.readFileSync(cacheFile, 'utf8').trim();
+    if (!content) return null;
+    const age = Date.now() - fs.statSync(cacheFile).mtimeMs;
+    return `${content} [${formatCacheAge(age)}]`;
+  } catch { return null; }
 }
 
 async function main() {
