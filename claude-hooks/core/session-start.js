@@ -153,17 +153,16 @@ function scheduledAgents() {
   const cacheFile = path.join(process.env.HOME, '.cache/claude-jobs');
   try {
     const data = JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
-    const { planned = 0, running = 0, failed = 0, succeeded = 0 } = data;
-    if (planned === 0 && running === 0 && failed === 0 && succeeded === 0) return null;
-
-    const parts = [];
-    if (failed > 0) parts.push(`${failed} failed`);
-    if (running > 0) parts.push(`${running} running`);
-    if (succeeded > 0) parts.push(`${succeeded} succeeded`);
-    if (planned > 0) parts.push(`${planned} planned`);
-
     const age = Date.now() - fs.statSync(cacheFile).mtimeMs;
-    return `🦾 Claude Jobs ${parts.join(', ')} ⇒ claude-jobs [${formatCacheAge(age)}]`;
+
+    if (data.failed_ids) {
+      if (data.failed_count === 0) return null;
+      return `🦾 Claude Jobs ${data.failed_count} failed (${data.failed_ids.join(', ')}) ⇒ claude-jobs [${formatCacheAge(age)}]`;
+    }
+
+    const { failed = 0 } = data;
+    if (failed === 0) return null;
+    return `🦾 Claude Jobs ${failed} failed ⇒ claude-jobs [${formatCacheAge(age)}]`;
   } catch { return null; }
 }
 
