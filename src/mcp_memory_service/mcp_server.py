@@ -502,57 +502,79 @@ Examples:
 
 @mcp.tool(
     annotations=ToolAnnotations(
-        title="Delete Memory",
+        title="Archive Memory",
         destructiveHint=True,
     ),
 )
-async def delete_memory(
+async def archive_memory(
     content_hash: str,
-    ctx: Context
+    ctx: Context,
+    force: bool = False,
 ) -> Dict[str, Union[bool, str]]:
-    """Delete a specific memory by its unique content hash identifier - permanent removal of a single memory entry.
+    """Soft-delete (archive) a memory. The memory can be restored later with unarchive_memory.
 
 USE THIS WHEN:
 - User explicitly requests deletion of a specific memory ("delete that", "remove the memory about X")
 - After showing user a memory and they want it removed
 - Correcting mistakenly stored information
 - User says "forget about X", "delete the note about Y", "remove that memory"
-- Have the content_hash from a previous retrieve/search operation
 
-DO NOT USE FOR:
-- Deleting multiple memories - use delete_by_tag, delete_by_tags, or delete_by_all_tags instead
-- Deleting by content without hash - search first with retrieve_memory to get the hash
-- Bulk cleanup - use cleanup_duplicates or delete_by_tag instead
-- Time-based deletion - use delete_by_timeframe or delete_before_date instead
-
-IMPORTANT:
-- This is a PERMANENT operation - memory cannot be recovered after deletion
-- You must have the exact content_hash (obtained from search/retrieve operations)
-- Only deletes the single memory matching the hash
-
-HOW TO GET content_hash:
-1. First search for the memory using retrieve_memory, recall_memory, or search_by_tag
-2. Memory results include "content_hash" field
-3. Use that hash in this delete operation
+PROTECTION:
+- Memories with access_count > 50 or tagged milestone/critical require force=True
+- Protected memories are high-value and should not be archived without explicit intent
 
 RETURNS:
-- success: Boolean indicating if deletion succeeded
-- content_hash: The hash of the deleted memory
+- success: Boolean indicating if archival succeeded
+- content_hash: The hash of the archived memory
 - error: Error message (only present if success is False)
-
-Examples:
-# Step 1: Find the memory
-retrieve_memory(query: "outdated API documentation")
-# Returns: [{content_hash: "a1b2c3d4e5f6...", content: "...", ...}]
-
-# Step 2: Delete it
-{
-    "content_hash": "a1b2c3d4e5f6..."
-}
     """
-    # Delegate to shared MemoryService business logic
     memory_service = ctx.request_context.lifespan_context.memory_service
-    return await memory_service.delete_memory(content_hash)
+    return await memory_service.delete_memory(content_hash, force=force)
+
+
+@mcp.tool(
+    annotations=ToolAnnotations(
+        title="Unarchive Memory",
+    ),
+)
+async def unarchive_memory(
+    content_hash: str,
+    ctx: Context,
+) -> Dict[str, Union[bool, str]]:
+    """Restore a previously archived (soft-deleted) memory. Re-computes its embedding for search.
+
+USE THIS WHEN:
+- A memory was archived by mistake and needs to be restored
+- Recovering valuable content that was previously deleted
+
+RETURNS:
+- success: Boolean indicating if restoration succeeded
+- content_hash: The hash of the restored memory
+    """
+    memory_service = ctx.request_context.lifespan_context.memory_service
+    return await memory_service.unarchive_memory(content_hash)
+
+
+@mcp.tool(
+    annotations=ToolAnnotations(
+        title="Purge Memory",
+        destructiveHint=True,
+    ),
+)
+async def purge_memory(
+    content_hash: str,
+    ctx: Context,
+) -> Dict[str, Union[bool, str]]:
+    """Permanently hard-delete a memory. IRREVERSIBLE: the memory cannot be recovered.
+
+USE THIS WHEN:
+- A memory must be permanently removed (sensitive data, compliance)
+- Cleaning up tombstones that should never be restored
+
+WARNING: This is a permanent operation. Use archive_memory for reversible deletion.
+    """
+    memory_service = ctx.request_context.lifespan_context.memory_service
+    return await memory_service.purge_memory(content_hash)
 
 @mcp.tool(
     annotations=ToolAnnotations(

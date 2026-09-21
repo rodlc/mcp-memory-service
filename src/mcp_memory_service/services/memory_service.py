@@ -548,37 +548,41 @@ class MemoryService:
                 "error": f"Failed to get memory: {str(e)}"
             }
 
-    async def delete_memory(self, content_hash: str) -> Union[DeleteMemorySuccess, DeleteMemoryFailure]:
-        """
-        Delete a memory by its content hash.
-
-        Args:
-            content_hash: The content hash of the memory to delete
-
-        Returns:
-            Dictionary with operation result
-        """
+    async def delete_memory(self, content_hash: str, force: bool = False) -> Union[DeleteMemorySuccess, DeleteMemoryFailure]:
+        """Archive (soft-delete) a memory by its content hash."""
         try:
-            success, message = await self.storage.delete(content_hash)
+            success, message = await self.storage.delete(content_hash, force=force)
             if success:
-                return {
-                    "success": True,
-                    "content_hash": content_hash
-                }
+                return {"success": True, "content_hash": content_hash}
             else:
-                return {
-                    "success": False,
-                    "content_hash": content_hash,
-                    "error": message
-                }
-
+                return {"success": False, "content_hash": content_hash, "error": message}
         except Exception as e:
-            logger.error(f"Error deleting memory: {e}")
-            return {
-                "success": False,
-                "content_hash": content_hash,
-                "error": f"Failed to delete memory: {str(e)}"
-            }
+            logger.error(f"Error archiving memory: {e}")
+            return {"success": False, "content_hash": content_hash, "error": f"Failed to archive memory: {str(e)}"}
+
+    async def unarchive_memory(self, content_hash: str) -> Union[DeleteMemorySuccess, DeleteMemoryFailure]:
+        """Restore a soft-deleted memory with re-embedded content."""
+        try:
+            success, message = await self.storage.unarchive(content_hash)
+            if success:
+                return {"success": True, "content_hash": content_hash}
+            else:
+                return {"success": False, "content_hash": content_hash, "error": message}
+        except Exception as e:
+            logger.error(f"Error unarchiving memory: {e}")
+            return {"success": False, "content_hash": content_hash, "error": f"Failed to unarchive memory: {str(e)}"}
+
+    async def purge_memory(self, content_hash: str) -> Union[DeleteMemorySuccess, DeleteMemoryFailure]:
+        """Permanently hard-delete a memory. Irreversible."""
+        try:
+            success, message = await self.storage.purge(content_hash)
+            if success:
+                return {"success": True, "content_hash": content_hash}
+            else:
+                return {"success": False, "content_hash": content_hash, "error": message}
+        except Exception as e:
+            logger.error(f"Error purging memory: {e}")
+            return {"success": False, "content_hash": content_hash, "error": f"Failed to purge memory: {str(e)}"}
 
     async def health_check(self) -> Union[HealthCheckSuccess, HealthCheckFailure]:
         """

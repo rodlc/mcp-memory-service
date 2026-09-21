@@ -764,7 +764,7 @@ class CloudflareStorage(MemoryStorage):
             logger.error(f"Failed to load memory from row: {e}")
             return None
     
-    async def delete(self, content_hash: str) -> Tuple[bool, str]:
+    async def delete(self, content_hash: str, force: bool = False) -> Tuple[bool, str]:
         """Delete a memory by its hash."""
         try:
             # Find memory in D1

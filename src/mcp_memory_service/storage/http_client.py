@@ -288,7 +288,7 @@ class HTTPClientStorage(MemoryStorage):
             return _to_date(time_start)
         return _to_date(time_end)
     
-    async def delete(self, content_hash: str) -> Tuple[bool, str]:
+    async def delete(self, content_hash: str, force: bool = False) -> Tuple[bool, str]:
         """Delete a memory by content hash via HTTP API."""
         if not self._initialized or not self.session:
             return False, "HTTP client not initialized"

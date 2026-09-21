@@ -1387,7 +1387,7 @@ SOLUTIONS:
                 SELECT content_hash, content, tags, memory_type, metadata,
                        created_at, updated_at, created_at_iso, updated_at_iso
                 FROM memories
-                WHERE {tag_conditions}
+                WHERE ({tag_conditions}) AND deleted_at IS NULL
                 ORDER BY created_at DESC
                 {limit_clause} {offset_clause}
             '''
@@ -1429,45 +1429,60 @@ SOLUTIONS:
             logger.error(traceback.format_exc())
             return []
 
-    async def delete(self, content_hash: str) -> Tuple[bool, str]:
+    async def delete(self, content_hash: str, force: bool = False) -> Tuple[bool, str]:
         """
         Soft-delete a memory by setting deleted_at timestamp.
 
         The memory is marked as deleted but retained for sync conflict resolution.
         Use purge_deleted() to permanently remove old tombstones.
+        Protected memories (access_count > 50 or tagged milestone/critical) require force=True.
         """
         try:
             if not self.conn:
                 return False, "Database not initialized"
 
-            # Get the id first to delete corresponding embedding
             cursor = self.conn.execute(
-                'SELECT id FROM memories WHERE content_hash = ? AND deleted_at IS NULL',
+                'SELECT id, tags, metadata FROM memories WHERE content_hash = ? AND deleted_at IS NULL',
                 (content_hash,)
             )
             row = cursor.fetchone()
 
-            if row:
-                memory_id = row[0]
-                # Delete embedding (won't be needed for search)
-                self.conn.execute('DELETE FROM memory_embeddings WHERE rowid = ?', (memory_id,))
-                # Soft-delete: set deleted_at timestamp instead of DELETE
-                cursor = self.conn.execute(
-                    'UPDATE memories SET deleted_at = ? WHERE content_hash = ? AND deleted_at IS NULL',
-                    (time.time(), content_hash)
-                )
-                self.conn.commit()
-            else:
+            if not row:
                 return False, f"Memory with hash {content_hash} not found"
+
+            memory_id, tags_str, metadata_str = row
+
+            if not force:
+                protected_tags = {"milestone", "critical"}
+                memory_tags = {t.strip() for t in tags_str.split(",") if t.strip()} if tags_str else set()
+                if memory_tags & protected_tags:
+                    return False, f"Protected memory (tags: {memory_tags & protected_tags}). Use force=True to archive."
+
+                access_count = 0
+                if metadata_str:
+                    try:
+                        metadata = json.loads(metadata_str)
+                        access_count = metadata.get("access_count", 0)
+                    except (json.JSONDecodeError, TypeError):
+                        pass
+                if access_count > 50:
+                    return False, f"Protected memory (access_count={access_count} > 50). Use force=True to archive."
+
+            self.conn.execute('DELETE FROM memory_embeddings WHERE rowid = ?', (memory_id,))
+            cursor = self.conn.execute(
+                'UPDATE memories SET deleted_at = ? WHERE content_hash = ? AND deleted_at IS NULL',
+                (time.time(), content_hash)
+            )
+            self.conn.commit()
 
             if cursor.rowcount > 0:
                 logger.info(f"Soft-deleted memory: {content_hash}")
-                return True, f"Successfully deleted memory {content_hash}"
+                return True, f"Successfully archived memory {content_hash}"
             else:
                 return False, f"Memory with hash {content_hash} not found"
 
         except Exception as e:
-            error_msg = f"Failed to delete memory: {str(e)}"
+            error_msg = f"Failed to archive memory: {str(e)}"
             logger.error(error_msg)
             return False, error_msg
 
@@ -1518,6 +1533,68 @@ SOLUTIONS:
             logger.error(f"Failed to purge deleted memories: {str(e)}")
             return 0
     
+    async def unarchive(self, content_hash: str) -> Tuple[bool, str]:
+        """Restore a soft-deleted memory: unset deleted_at and re-compute embedding."""
+        try:
+            if not self.conn:
+                return False, "Database not initialized"
+
+            cursor = self.conn.execute(
+                'SELECT id, content FROM memories WHERE content_hash = ? AND deleted_at IS NOT NULL',
+                (content_hash,)
+            )
+            row = cursor.fetchone()
+            if not row:
+                return False, f"No archived memory with hash {content_hash}"
+
+            memory_id, content = row
+
+            embedding = self._generate_embedding(content)
+            self.conn.execute(
+                'INSERT OR REPLACE INTO memory_embeddings (rowid, content_embedding) VALUES (?, ?)',
+                (memory_id, serialize_float32(embedding))
+            )
+            self.conn.execute(
+                'UPDATE memories SET deleted_at = NULL WHERE content_hash = ?',
+                (content_hash,)
+            )
+            self.conn.commit()
+
+            logger.info(f"Unarchived memory: {content_hash}")
+            return True, f"Successfully unarchived memory {content_hash}"
+
+        except Exception as e:
+            error_msg = f"Failed to unarchive memory: {str(e)}"
+            logger.error(error_msg)
+            return False, error_msg
+
+    async def purge(self, content_hash: str) -> Tuple[bool, str]:
+        """Permanently delete a memory (hard-delete). Irreversible."""
+        try:
+            if not self.conn:
+                return False, "Database not initialized"
+
+            cursor = self.conn.execute(
+                'SELECT id FROM memories WHERE content_hash = ?',
+                (content_hash,)
+            )
+            row = cursor.fetchone()
+            if not row:
+                return False, f"Memory with hash {content_hash} not found"
+
+            memory_id = row[0]
+            self.conn.execute('DELETE FROM memory_embeddings WHERE rowid = ?', (memory_id,))
+            self.conn.execute('DELETE FROM memories WHERE content_hash = ?', (content_hash,))
+            self.conn.commit()
+
+            logger.info(f"Purged memory permanently: {content_hash}")
+            return True, f"Permanently purged memory {content_hash}"
+
+        except Exception as e:
+            error_msg = f"Failed to purge memory: {str(e)}"
+            logger.error(error_msg)
+            return False, error_msg
+
     async def get_by_hash(self, content_hash: str) -> Optional[Memory]:
         """Get a memory by its content hash (full or partial prefix)."""
         try:
@@ -1721,7 +1798,7 @@ SOLUTIONS:
             # Use soft-delete for each hash
             deleted_count = 0
             for content_hash in hashes:
-                success, _ = await self.delete(content_hash)
+                success, _ = await self.delete(content_hash, force=True)
                 if success:
                     deleted_count += 1
 
@@ -1761,7 +1838,7 @@ SOLUTIONS:
             # Use soft-delete for each hash
             deleted_count = 0
             for content_hash in hashes:
-                success, _ = await self.delete(content_hash)
+                success, _ = await self.delete(content_hash, force=True)
                 if success:
                     deleted_count += 1
 
@@ -2230,10 +2307,11 @@ SOLUTIONS:
                 SELECT content_hash, content, tags, memory_type, metadata,
                        created_at, updated_at, created_at_iso, updated_at_iso
                 FROM memories
+                WHERE deleted_at IS NULL
             '''
-            
+
             if time_where:
-                base_query += f" WHERE {time_where}"
+                base_query += f" AND {time_where}"
             
             base_query += " ORDER BY created_at DESC LIMIT ?"
             

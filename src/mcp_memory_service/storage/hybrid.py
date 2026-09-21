@@ -1356,9 +1356,9 @@ class HybridMemoryStorage(MemoryStorage):
             time_end=time_end
         )
 
-    async def delete(self, content_hash: str) -> Tuple[bool, str]:
+    async def delete(self, content_hash: str, force: bool = False) -> Tuple[bool, str]:
         """Delete a memory from primary storage and queue for secondary sync."""
-        success, message = await self.primary.delete(content_hash)
+        success, message = await self.primary.delete(content_hash, force=force)
 
         if success and self.sync_service:
             # Queue for background sync to secondary

@@ -342,8 +342,9 @@ async def handle_tool_call(storage, tool_name: str, arguments: Dict[str, Any]) -
     
     elif tool_name == "delete_memory":
         content_hash = arguments.get("content_hash")
-        
-        success, message = await storage.delete(content_hash)
+        force = arguments.get("force", False)
+
+        success, message = await storage.delete(content_hash, force=force)
         
         return {
             "success": success,

@@ -1423,8 +1423,38 @@ class MemoryServer:
                         ),
                     ),
                     types.Tool(
-                        name="delete_memory",
-                        description="""Delete a specific memory by its hash.
+                        name="archive_memory",
+                        description="""Soft-delete (archive) a memory. Can be restored with unarchive_memory.
+                        Protected memories (access_count > 50, tagged milestone/critical) require force=True.
+
+                        Example:
+                        {
+                            "content_hash": "a1b2c3d4...",
+                            "force": false
+                        }""",
+                        inputSchema={
+                            "type": "object",
+                            "properties": {
+                                "content_hash": {
+                                    "type": "string",
+                                    "description": "Hash of the memory content to archive."
+                                },
+                                "force": {
+                                    "type": "boolean",
+                                    "description": "Force archive of protected memories.",
+                                    "default": False
+                                }
+                            },
+                            "required": ["content_hash"]
+                        },
+                        annotations=types.ToolAnnotations(
+                            title="Archive Memory",
+                            destructiveHint=True,
+                        ),
+                    ),
+                    types.Tool(
+                        name="unarchive_memory",
+                        description="""Restore a previously archived memory. Re-computes embedding for search.
 
                         Example:
                         {
@@ -1435,13 +1465,35 @@ class MemoryServer:
                             "properties": {
                                 "content_hash": {
                                     "type": "string",
-                                    "description": "Hash of the memory content to delete. Obtainable from memory metadata."
+                                    "description": "Hash of the archived memory to restore."
                                 }
                             },
                             "required": ["content_hash"]
                         },
                         annotations=types.ToolAnnotations(
-                            title="Delete Memory",
+                            title="Unarchive Memory",
+                        ),
+                    ),
+                    types.Tool(
+                        name="purge_memory",
+                        description="""Permanently hard-delete a memory. IRREVERSIBLE.
+
+                        Example:
+                        {
+                            "content_hash": "a1b2c3d4..."
+                        }""",
+                        inputSchema={
+                            "type": "object",
+                            "properties": {
+                                "content_hash": {
+                                    "type": "string",
+                                    "description": "Hash of the memory to permanently delete."
+                                }
+                            },
+                            "required": ["content_hash"]
+                        },
+                        annotations=types.ToolAnnotations(
+                            title="Purge Memory",
                             destructiveHint=True,
                         ),
                     ),
@@ -1512,40 +1564,7 @@ class MemoryServer:
                             destructiveHint=True,
                         ),
                     ),
-                    types.Tool(
-                        name="delete_by_all_tags",
-                        description="""Delete memories that contain ALL of the specified tags.
-                        WARNING: Only deletes memories that have every one of the specified tags.
-
-                        Example:
-                        {
-                            "tags": ["important", "urgent"]
-                        }""",
-                        inputSchema={
-                            "type": "object",
-                            "properties": {
-                                "tags": {
-                                    "oneOf": [
-                                        {
-                                            "type": "array",
-                                            "items": {"type": "string"},
-                                            "description": "Tags as an array of strings"
-                                        },
-                                        {
-                                            "type": "string",
-                                            "description": "Tags as comma-separated string"
-                                        }
-                                    ],
-                                    "description": "List of tag labels. Only memories containing ALL of these tags will be deleted. Accepts either an array of strings or a comma-separated string."
-                                }
-                            },
-                            "required": ["tags"]
-                        },
-                        annotations=types.ToolAnnotations(
-                            title="Delete by All Tags",
-                            destructiveHint=True,
-                        ),
-                    ),
+                    # delete_by_all_tags removed: storage method never existed (AttributeError at runtime)
                     types.Tool(
                         name="cleanup_duplicates",
                         description="Find and remove duplicate entries",
@@ -2323,14 +2342,18 @@ class MemoryServer:
                     return await self.handle_recall_memory(arguments)
                 elif name == "search_by_tag":
                     return await self.handle_search_by_tag(arguments)
+                elif name == "archive_memory":
+                    return await self.handle_archive_memory(arguments)
                 elif name == "delete_memory":
-                    return await self.handle_delete_memory(arguments)
+                    return await self.handle_archive_memory(arguments)
+                elif name == "unarchive_memory":
+                    return await self.handle_unarchive_memory(arguments)
+                elif name == "purge_memory":
+                    return await self.handle_purge_memory(arguments)
                 elif name == "delete_by_tag":
                     return await self.handle_delete_by_tag(arguments)
                 elif name == "delete_by_tags":
                     return await self.handle_delete_by_tags(arguments)
-                elif name == "delete_by_all_tags":
-                    return await self.handle_delete_by_all_tags(arguments)
                 elif name == "cleanup_duplicates":
                     return await self.handle_cleanup_duplicates(arguments)
                 elif name == "debug_retrieve":
@@ -2424,10 +2447,24 @@ class MemoryServer:
         from .server.handlers import memory as memory_handlers
         return await memory_handlers.handle_search_by_tag(self, arguments)
 
-    async def handle_delete_memory(self, arguments: dict) -> List[types.TextContent]:
-        """Delete memory (delegates to handler)."""
+    async def handle_archive_memory(self, arguments: dict) -> List[types.TextContent]:
+        """Archive (soft-delete) memory (delegates to handler)."""
         from .server.handlers import memory as memory_handlers
-        return await memory_handlers.handle_delete_memory(self, arguments)
+        return await memory_handlers.handle_archive_memory(self, arguments)
+
+    async def handle_delete_memory(self, arguments: dict) -> List[types.TextContent]:
+        """Backward compat: routes to archive."""
+        return await self.handle_archive_memory(arguments)
+
+    async def handle_unarchive_memory(self, arguments: dict) -> List[types.TextContent]:
+        """Unarchive memory (delegates to handler)."""
+        from .server.handlers import memory as memory_handlers
+        return await memory_handlers.handle_unarchive_memory(self, arguments)
+
+    async def handle_purge_memory(self, arguments: dict) -> List[types.TextContent]:
+        """Purge memory permanently (delegates to handler)."""
+        from .server.handlers import memory as memory_handlers
+        return await memory_handlers.handle_purge_memory(self, arguments)
 
     async def handle_delete_by_tag(self, arguments: dict) -> List[types.TextContent]:
         """Handler for deleting memories by tags (delegates to handler)."""

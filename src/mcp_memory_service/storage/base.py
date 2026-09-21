@@ -244,9 +244,17 @@ class MemoryStorage(ABC):
         return memories
     
     @abstractmethod
-    async def delete(self, content_hash: str) -> Tuple[bool, str]:
-        """Delete a memory by its hash."""
+    async def delete(self, content_hash: str, force: bool = False) -> Tuple[bool, str]:
+        """Soft-delete (archive) a memory by its hash. Protected memories require force=True."""
         pass
+
+    async def unarchive(self, content_hash: str) -> Tuple[bool, str]:
+        """Restore a soft-deleted memory. Default: not supported."""
+        return False, "Unarchive not supported by this backend"
+
+    async def purge(self, content_hash: str) -> Tuple[bool, str]:
+        """Permanently hard-delete a memory. Default: not supported."""
+        return False, "Purge not supported by this backend"
 
     async def is_deleted(self, content_hash: str) -> bool:
         """

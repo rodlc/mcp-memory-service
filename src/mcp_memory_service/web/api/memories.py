@@ -291,34 +291,89 @@ async def get_memory(
 @router.delete("/memories/{content_hash}", response_model=MemoryDeleteResponse, tags=["memories"])
 async def delete_memory(
     content_hash: str,
+    force: bool = Query(False),
     storage: MemoryStorage = Depends(get_storage),
     user: AuthenticationResult = Depends(require_write_access) if OAUTH_ENABLED else None
 ):
-    """
-    Delete a memory by its content hash.
-    
-    Permanently removes a memory entry from the storage.
-    """
+    """Soft-delete (archive) a memory. Backward-compatible DELETE endpoint."""
     try:
-        success, message = await storage.delete(content_hash)
-        
-        # Broadcast SSE event for memory deletion
+        success, message = await storage.delete(content_hash, force=force)
+
+        if not success and "Protected memory" in message:
+            raise HTTPException(status_code=409, detail=message)
+
         try:
             event = create_memory_deleted_event(content_hash, success)
             await sse_manager.broadcast_event(event)
         except Exception as e:
-            # Don't fail the request if SSE broadcasting fails
             logger.warning(f"Failed to broadcast memory_deleted event: {e}")
-        
+
         return MemoryDeleteResponse(
             success=success,
             message=message,
             content_hash=content_hash
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Failed to delete memory: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to delete memory. Please try again.")
+        logger.error(f"Failed to archive memory: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to archive memory.")
+
+
+@router.post("/memories/{content_hash}/archive", response_model=MemoryDeleteResponse, tags=["memories"])
+async def archive_memory(
+    content_hash: str,
+    force: bool = Query(False),
+    storage: MemoryStorage = Depends(get_storage),
+    user: AuthenticationResult = Depends(require_write_access) if OAUTH_ENABLED else None
+):
+    """Soft-delete (archive) a memory. Protected memories require force=true."""
+    try:
+        success, message = await storage.delete(content_hash, force=force)
+
+        if not success and "Protected memory" in message:
+            raise HTTPException(status_code=409, detail=message)
+
+        return MemoryDeleteResponse(success=success, message=message, content_hash=content_hash)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to archive memory: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to archive memory.")
+
+
+@router.post("/memories/{content_hash}/unarchive", response_model=MemoryDeleteResponse, tags=["memories"])
+async def unarchive_memory(
+    content_hash: str,
+    storage: MemoryStorage = Depends(get_storage),
+    user: AuthenticationResult = Depends(require_write_access) if OAUTH_ENABLED else None
+):
+    """Restore a soft-deleted memory with re-computed embedding."""
+    try:
+        success, message = await storage.unarchive(content_hash)
+        return MemoryDeleteResponse(success=success, message=message, content_hash=content_hash)
+
+    except Exception as e:
+        logger.error(f"Failed to unarchive memory: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to unarchive memory.")
+
+
+@router.post("/memories/{content_hash}/purge", response_model=MemoryDeleteResponse, tags=["memories"])
+async def purge_memory(
+    content_hash: str,
+    storage: MemoryStorage = Depends(get_storage),
+    user: AuthenticationResult = Depends(require_write_access) if OAUTH_ENABLED else None
+):
+    """Permanently hard-delete a memory. Irreversible."""
+    try:
+        success, message = await storage.purge(content_hash)
+        return MemoryDeleteResponse(success=success, message=message, content_hash=content_hash)
+
+    except Exception as e:
+        logger.error(f"Failed to purge memory: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to purge memory.")
 
 
 @router.put("/memories/{content_hash}", response_model=MemoryUpdateResponse, tags=["memories"])

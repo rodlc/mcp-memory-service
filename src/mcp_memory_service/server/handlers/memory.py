@@ -300,24 +300,56 @@ async def handle_search_by_tag(server, arguments: dict) -> List[types.TextConten
         return [types.TextContent(type="text", text=f"Error searching by tags: {str(e)}")]
 
 
-async def handle_delete_memory(server, arguments: dict) -> List[types.TextContent]:
+async def handle_archive_memory(server, arguments: dict) -> List[types.TextContent]:
+    content_hash = arguments.get("content_hash")
+    force = arguments.get("force", False)
+
+    try:
+        await server._ensure_storage_initialized()
+        result = await server.memory_service.delete_memory(content_hash, force=force)
+
+        if result["success"]:
+            return [types.TextContent(type="text", text=f"Memory archived successfully: {result['content_hash'][:16]}...")]
+        else:
+            return [types.TextContent(type="text", text=f"Failed to archive memory: {result.get('error', 'Unknown error')}")]
+    except Exception as e:
+        logger.error(f"Error archiving memory: {str(e)}\n{traceback.format_exc()}")
+        return [types.TextContent(type="text", text=f"Error archiving memory: {str(e)}")]
+
+
+handle_delete_memory = handle_archive_memory
+
+
+async def handle_unarchive_memory(server, arguments: dict) -> List[types.TextContent]:
     content_hash = arguments.get("content_hash")
 
     try:
-        # Initialize storage lazily when needed (also initializes memory_service)
         await server._ensure_storage_initialized()
+        result = await server.memory_service.unarchive_memory(content_hash)
 
-        # Call shared MemoryService business logic
-        result = await server.memory_service.delete_memory(content_hash)
-
-        # Handle response based on success/failure format
         if result["success"]:
-            return [types.TextContent(type="text", text=f"Memory deleted successfully: {result['content_hash'][:16]}...")]
+            return [types.TextContent(type="text", text=f"Memory unarchived successfully: {result['content_hash'][:16]}...")]
         else:
-            return [types.TextContent(type="text", text=f"Failed to delete memory: {result.get('error', 'Unknown error')}")]
+            return [types.TextContent(type="text", text=f"Failed to unarchive memory: {result.get('error', 'Unknown error')}")]
     except Exception as e:
-        logger.error(f"Error deleting memory: {str(e)}\n{traceback.format_exc()}")
-        return [types.TextContent(type="text", text=f"Error deleting memory: {str(e)}")]
+        logger.error(f"Error unarchiving memory: {str(e)}\n{traceback.format_exc()}")
+        return [types.TextContent(type="text", text=f"Error unarchiving memory: {str(e)}")]
+
+
+async def handle_purge_memory(server, arguments: dict) -> List[types.TextContent]:
+    content_hash = arguments.get("content_hash")
+
+    try:
+        await server._ensure_storage_initialized()
+        result = await server.memory_service.purge_memory(content_hash)
+
+        if result["success"]:
+            return [types.TextContent(type="text", text=f"Memory purged permanently: {result['content_hash'][:16]}...")]
+        else:
+            return [types.TextContent(type="text", text=f"Failed to purge memory: {result.get('error', 'Unknown error')}")]
+    except Exception as e:
+        logger.error(f"Error purging memory: {str(e)}\n{traceback.format_exc()}")
+        return [types.TextContent(type="text", text=f"Error purging memory: {str(e)}")]
 
 
 async def handle_delete_by_tag(server, arguments: dict) -> List[types.TextContent]:
@@ -388,22 +420,8 @@ async def handle_delete_by_tags(server, arguments: dict) -> List[types.TextConte
 
 
 async def handle_delete_by_all_tags(server, arguments: dict) -> List[types.TextContent]:
-    """Handler for deleting memories that contain ALL specified tags."""
-    from ...services.memory_service import normalize_tags
-
-    tags = normalize_tags(arguments.get("tags", []))
-
-    if not tags:
-        return [types.TextContent(type="text", text="Error: Tags array is required")]
-
-    try:
-        # Initialize storage lazily when needed
-        storage = await server._ensure_storage_initialized()
-        count, message = await storage.delete_by_all_tags(tags)
-        return [types.TextContent(type="text", text=message)]
-    except Exception as e:
-        logger.error(f"Error deleting by all tags: {str(e)}\n{traceback.format_exc()}")
-        return [types.TextContent(type="text", text=f"Error deleting by all tags: {str(e)}")]
+    """Removed: storage.delete_by_all_tags does not exist. Use delete_by_tags instead."""
+    return [types.TextContent(type="text", text="Error: delete_by_all_tags is no longer supported. Use delete_by_tags instead.")]
 
 
 async def handle_cleanup_duplicates(server, arguments: dict) -> List[types.TextContent]:

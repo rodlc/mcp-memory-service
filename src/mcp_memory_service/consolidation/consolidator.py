@@ -610,23 +610,22 @@ class DreamInspiredConsolidator:
             source_hashes = result.compressed_memory.metadata.get('source_memory_hashes', [])
             for source_hash in source_hashes:
                 try:
-                    await self.storage.delete(source_hash)
+                    await self.storage.delete(source_hash, force=True)
                 except Exception as e:
                     self.logger.warning(f"Failed to archive source memory {source_hash}: {e}")
-    
+
     async def _apply_forgetting_results(self, forgetting_results) -> None:
         """Apply forgetting results to the storage backend."""
         for result in forgetting_results:
             if result.action_taken == 'deleted':
-                await self.storage.delete(result.memory_hash)
+                await self.storage.delete(result.memory_hash, force=True)
             elif result.action_taken == 'compressed' and result.compressed_version:
-                # Replace original with compressed version
-                await self.storage.delete(result.memory_hash)
+                await self.storage.delete(result.memory_hash, force=True)
                 success, _ = await self.storage.store(result.compressed_version)
                 if not success:
                     self.logger.warning(f"Failed to store compressed version for {result.memory_hash}")
             elif result.action_taken == 'archived':
-                await self.storage.delete(result.memory_hash)
+                await self.storage.delete(result.memory_hash, force=True)
     
     async def _update_consolidation_timestamps(self, memories: List[Memory]) -> None:
         """Mark memories with last_consolidated_at timestamp for incremental mode using batch updates."""
