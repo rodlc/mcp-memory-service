@@ -1435,17 +1435,17 @@ SOLUTIONS:
 
         The memory is marked as deleted but retained for sync conflict resolution.
         Use purge_deleted() to permanently remove old tombstones.
-        Protected memories require force=True:
-        - tagged milestone/critical
-        - recently active (last access < 7 days)
-        - high access count (> 5)
+        Protected memories require force=True (aligned with consolidation/forgetting):
+        milestone, critical, important, reference, permanent.
         """
+        _PROTECTED_TAGS = {"milestone", "critical", "important", "reference", "permanent"}
+
         try:
             if not self.conn:
                 return False, "Database not initialized"
 
             cursor = self.conn.execute(
-                'SELECT id, tags, metadata, created_at FROM memories WHERE content_hash = ? AND deleted_at IS NULL',
+                'SELECT id, tags FROM memories WHERE content_hash = ? AND deleted_at IS NULL',
                 (content_hash,)
             )
             row = cursor.fetchone()
@@ -1453,31 +1453,13 @@ SOLUTIONS:
             if not row:
                 return False, f"Memory with hash {content_hash} not found"
 
-            memory_id, tags_str, metadata_str, created_at = row
+            memory_id, tags_str = row
 
             if not force:
                 memory_tags = {t.strip() for t in tags_str.split(",") if t.strip()} if tags_str else set()
-                if memory_tags & {"milestone", "critical"}:
-                    return False, f"Protected memory (tags: {memory_tags & {'milestone', 'critical'}}). Use force=True to archive."
-
-                access_count = 0
-                last_active = created_at or 0
-                if metadata_str:
-                    try:
-                        metadata = json.loads(metadata_str)
-                        access_count = metadata.get("access_count", 0)
-                        la = metadata.get("last_accessed_at")
-                        if isinstance(la, (int, float)) and la > last_active:
-                            last_active = la
-                    except (json.JSONDecodeError, TypeError):
-                        pass
-
-                days_idle = (time.time() - last_active) / 86400
-                if days_idle < 7:
-                    return False, f"Protected memory (active {days_idle:.0f}d ago). Use force=True to archive."
-
-                if access_count > 5:
-                    return False, f"Protected memory (ac={access_count}). Use force=True to archive."
+                matched = memory_tags & _PROTECTED_TAGS
+                if matched:
+                    return False, f"Protected memory (tags: {matched}). Use force=True to archive."
 
             self.conn.execute('DELETE FROM memory_embeddings WHERE rowid = ?', (memory_id,))
             cursor = self.conn.execute(

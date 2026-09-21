@@ -520,7 +520,7 @@ USE THIS WHEN:
 - User says "forget about X", "delete the note about Y", "remove that memory"
 
 PROTECTION:
-- Tagged milestone/critical, recently active (< 7d), or access_count > 5 require force=True
+- Tags milestone/critical/important/reference/permanent require force=True (aligned with consolidation)
 
 RETURNS:
 - success: Boolean indicating if archival succeeded
