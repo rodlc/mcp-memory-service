@@ -41,10 +41,10 @@ function worktreeContext(cwd) {
     const gitDir = git('git rev-parse --git-dir');
     const gitCommonDir = git('git rev-parse --git-common-dir');
     const repoName = path.dirname(path.resolve(cwd, gitCommonDir)).split('/').pop();
-    if (['workspace', 'dotfiles'].includes(repoName)) return null;
 
     const branch = git('git symbolic-ref --short HEAD');
     if (gitDir === gitCommonDir) {
+      if (['workspace', 'dotfiles'].includes(repoName)) return null;
       return `⚠ NOT in a worktree on ${repoName} (branch: ${branch}). Call EnterWorktree before any edits.`;
     }
     const wtName = git('git rev-parse --show-toplevel').split('/').pop();
