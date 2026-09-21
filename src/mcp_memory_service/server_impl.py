@@ -1425,7 +1425,7 @@ class MemoryServer:
                     types.Tool(
                         name="archive_memory",
                         description="""Soft-delete (archive) a memory. Can be restored with unarchive_memory.
-                        Protected memories (access_count > 50, tagged milestone/critical) require force=True.
+                        Protected memories (tagged milestone/critical, curated prefix) require force=True.
 
                         Example:
                         {

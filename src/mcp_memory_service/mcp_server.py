@@ -520,8 +520,7 @@ USE THIS WHEN:
 - User says "forget about X", "delete the note about Y", "remove that memory"
 
 PROTECTION:
-- Memories with access_count > 50 or tagged milestone/critical require force=True
-- Protected memories are high-value and should not be archived without explicit intent
+- Tagged milestone/critical or curated prefix ([convention], [reference], etc.) require force=True
 
 RETURNS:
 - success: Boolean indicating if archival succeeded

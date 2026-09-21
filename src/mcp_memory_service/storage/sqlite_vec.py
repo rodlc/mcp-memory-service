@@ -1437,7 +1437,6 @@ SOLUTIONS:
         Use purge_deleted() to permanently remove old tombstones.
         Protected memories require force=True:
         - tagged milestone/critical
-        - access_count > 50
         - curated content prefix ([convention], [reference], etc.)
         """
         _CURATED_PREFIXES = (
@@ -1450,7 +1449,7 @@ SOLUTIONS:
                 return False, "Database not initialized"
 
             cursor = self.conn.execute(
-                'SELECT id, tags, metadata, content FROM memories WHERE content_hash = ? AND deleted_at IS NULL',
+                'SELECT id, tags, content FROM memories WHERE content_hash = ? AND deleted_at IS NULL',
                 (content_hash,)
             )
             row = cursor.fetchone()
@@ -1458,23 +1457,12 @@ SOLUTIONS:
             if not row:
                 return False, f"Memory with hash {content_hash} not found"
 
-            memory_id, tags_str, metadata_str, content = row
+            memory_id, tags_str, content = row
 
             if not force:
-                protected_tags = {"milestone", "critical"}
                 memory_tags = {t.strip() for t in tags_str.split(",") if t.strip()} if tags_str else set()
-                if memory_tags & protected_tags:
-                    return False, f"Protected memory (tags: {memory_tags & protected_tags}). Use force=True to archive."
-
-                access_count = 0
-                if metadata_str:
-                    try:
-                        metadata = json.loads(metadata_str)
-                        access_count = metadata.get("access_count", 0)
-                    except (json.JSONDecodeError, TypeError):
-                        pass
-                if access_count > 50:
-                    return False, f"Protected memory (access_count={access_count} > 50). Use force=True to archive."
+                if memory_tags & {"milestone", "critical"}:
+                    return False, f"Protected memory (tags: {memory_tags & {'milestone', 'critical'}}). Use force=True to archive."
 
                 if content and content.lower().lstrip().startswith(_CURATED_PREFIXES):
                     return False, f"Protected memory (curated: {content[:40]}...). Use force=True to archive."
