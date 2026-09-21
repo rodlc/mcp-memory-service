@@ -59,7 +59,7 @@ function worktreeContext(cwd) {
     const lastCommit = git('git log -1 --format="%cr"');
     let portInfo = '';
     try { portInfo = `, port: ${fs.readFileSync(path.join(cwd, '.port'), 'utf8').trim()}`; } catch {}
-    return `📍 Worktree '${wtName}' on ${repoName} (branch: ${branch}, last commit: ${lastCommit}${portInfo}). New task? → EnterWorktree.`;
+    return `📍 Worktree '${wtName}' on ${repoName} (branch: ${branch}, last commit: ${lastCommit}${portInfo}). Edits scoped to this worktree.`;
   } catch { return null; }
 }
 
