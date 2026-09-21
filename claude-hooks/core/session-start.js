@@ -35,16 +35,26 @@ function semverCompare(a, b) {
   return 0;
 }
 
+function loadPersonalRepos() {
+  const listFile = path.join(process.env.HOME, 'Code/rodlc/workspace/claude-config/personal-repos.list');
+  try {
+    return fs.readFileSync(listFile, 'utf8').split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#'));
+  } catch {
+    return ['workspace', 'dotfiles'];
+  }
+}
+
 function worktreeContext(cwd) {
   try {
     const git = (c) => execSync(c, { encoding: 'utf8', cwd, stdio: ['pipe', 'pipe', 'ignore'] }).trim();
     const gitDir = git('git rev-parse --git-dir');
     const gitCommonDir = git('git rev-parse --git-common-dir');
     const repoName = path.dirname(path.resolve(cwd, gitCommonDir)).split('/').pop();
+    const personalRepos = loadPersonalRepos();
 
     const branch = git('git symbolic-ref --short HEAD');
     if (gitDir === gitCommonDir) {
-      if (['workspace', 'dotfiles'].includes(repoName)) return null;
+      if (personalRepos.includes(repoName)) return null;
       return `⚠ NOT in a worktree on ${repoName} (branch: ${branch}). Call EnterWorktree before any edits.`;
     }
     const wtName = git('git rev-parse --show-toplevel').split('/').pop();
@@ -59,7 +69,7 @@ function worktreeContext(cwd) {
     const lastCommit = git('git log -1 --format="%cr"');
     let portInfo = '';
     try { portInfo = `, port: ${fs.readFileSync(path.join(cwd, '.port'), 'utf8').trim()}`; } catch {}
-    const workflow = ['workspace', 'dotfiles'].includes(repoName) ? 'Push direct to main.' : 'PR via /pr.';
+    const workflow = personalRepos.includes(repoName) ? 'Push direct to main.' : 'PR via /pr.';
     return `📍 Worktree '${wtName}' on ${repoName} (branch: ${branch}, last commit: ${lastCommit}${portInfo}). ${workflow}`;
   } catch { return null; }
 }
