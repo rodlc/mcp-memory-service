@@ -915,7 +915,7 @@ MCP_QUALITY_RETENTION_HIGH = safe_get_int_env('MCP_QUALITY_RETENTION_HIGH', 365,
 MCP_QUALITY_RETENTION_MEDIUM = safe_get_int_env('MCP_QUALITY_RETENTION_MEDIUM', 180, min_value=1, max_value=3650)  # days for quality 0.5-0.7
 MCP_QUALITY_RETENTION_LOW_MIN = safe_get_int_env('MCP_QUALITY_RETENTION_LOW_MIN', 30, min_value=1, max_value=365)  # minimum days for quality <0.5
 MCP_QUALITY_RETENTION_LOW_MAX = safe_get_int_env('MCP_QUALITY_RETENTION_LOW_MAX', 90, min_value=1, max_value=365)  # maximum days for quality <0.5
-MCP_QUALITY_RETENTION_PROTECTED_MULTIPLIER = safe_get_int_env('MCP_QUALITY_RETENTION_PROTECTED_MULTIPLIER', 5, min_value=2, max_value=20)  # multiplier for tag-protected memories (e.g., 5x365=1825d ~5yr)
+MCP_QUALITY_RETENTION_PROTECTED_MULTIPLIER = safe_get_int_env('MCP_QUALITY_RETENTION_PROTECTED_MULTIPLIER', 3, min_value=2, max_value=20)  # multiplier for tag-protected memories (3x: low~150d, med~540d, high~1095d)
 
 # Log quality system configuration
 logger.info(f"Quality System: enabled={MCP_QUALITY_SYSTEM_ENABLED}, provider={MCP_QUALITY_AI_PROVIDER}")
