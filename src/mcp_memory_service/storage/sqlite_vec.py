@@ -1436,9 +1436,9 @@ SOLUTIONS:
         The memory is marked as deleted but retained for sync conflict resolution.
         Use purge_deleted() to permanently remove old tombstones.
         Protected memories require force=True (aligned with consolidation/forgetting):
-        milestone, critical, important, reference, permanent.
+        milestone, critical, important, reference, convention, permanent.
         """
-        _PROTECTED_TAGS = {"milestone", "critical", "important", "reference", "permanent"}
+        _PROTECTED_TAGS = {"milestone", "critical", "important", "reference", "convention", "permanent"}
 
         try:
             if not self.conn:

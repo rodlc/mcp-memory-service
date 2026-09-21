@@ -142,7 +142,7 @@ class ConsolidationBase(ABC):
     
     def _is_protected_memory(self, memory: Memory) -> bool:
         """Check if a memory is protected from consolidation operations."""
-        protected_tags = {'milestone', 'critical', 'important', 'reference', 'permanent'}
+        protected_tags = {'milestone', 'critical', 'important', 'reference', 'convention', 'permanent'}
         return bool(set(memory.tags).intersection(protected_tags))
 
 class ConsolidationError(Exception):
