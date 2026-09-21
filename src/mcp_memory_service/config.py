@@ -912,9 +912,10 @@ if not 0.0 <= MCP_QUALITY_BOOST_WEIGHT <= 1.0:
 
 # Quality-Based Retention Policy (Consolidation)
 MCP_QUALITY_RETENTION_HIGH = safe_get_int_env('MCP_QUALITY_RETENTION_HIGH', 365, min_value=1, max_value=3650)       # days for quality ≥0.7
-MCP_QUALITY_RETENTION_MEDIUM = safe_get_int_env('MCP_QUALITY_RETENTION_MEDIUM', 365, min_value=1, max_value=3650)  # days for quality 0.5-0.7 (raised from 180: 86 memories >180d accessed weekly)
-MCP_QUALITY_RETENTION_LOW_MIN = safe_get_int_env('MCP_QUALITY_RETENTION_LOW_MIN', 180, min_value=1, max_value=365)  # minimum days for quality <0.5 (raised from 30: scorer miscalibrated, avg ac=34 in this tier)
-MCP_QUALITY_RETENTION_LOW_MAX = safe_get_int_env('MCP_QUALITY_RETENTION_LOW_MAX', 180, min_value=1, max_value=365)  # maximum days for quality <0.5 (raised from 90: no personal system auto-forgets at 30-90d)
+MCP_QUALITY_RETENTION_MEDIUM = safe_get_int_env('MCP_QUALITY_RETENTION_MEDIUM', 180, min_value=1, max_value=3650)  # days for quality 0.5-0.7
+MCP_QUALITY_RETENTION_LOW_MIN = safe_get_int_env('MCP_QUALITY_RETENTION_LOW_MIN', 30, min_value=1, max_value=365)  # minimum days for quality <0.5
+MCP_QUALITY_RETENTION_LOW_MAX = safe_get_int_env('MCP_QUALITY_RETENTION_LOW_MAX', 90, min_value=1, max_value=365)  # maximum days for quality <0.5
+MCP_QUALITY_RETENTION_PROTECTED_MULTIPLIER = safe_get_int_env('MCP_QUALITY_RETENTION_PROTECTED_MULTIPLIER', 5, min_value=2, max_value=20)  # multiplier for tag-protected memories (e.g., 5x365=1825d ~5yr)
 
 # Log quality system configuration
 logger.info(f"Quality System: enabled={MCP_QUALITY_SYSTEM_ENABLED}, provider={MCP_QUALITY_AI_PROVIDER}")

@@ -132,10 +132,10 @@ class ControlledForgettingEngine(ConsolidationBase):
         candidates = []
         current_time = datetime.now()
 
+        from ..config import MCP_QUALITY_RETENTION_PROTECTED_MULTIPLIER
+
         for memory in memories:
-            # Skip protected memories
-            if self._is_protected_memory(memory):
-                continue
+            is_protected = self._is_protected_memory(memory)
 
             # Get relevance score
             relevance_score = score_lookup.get(memory.content_hash)
@@ -147,8 +147,8 @@ class ControlledForgettingEngine(ConsolidationBase):
             can_be_deleted = False
             archive_priority = 3  # Default to low priority
 
-            # Low relevance check
-            if relevance_score.total_score < self.relevance_threshold:
+            # Low relevance check (protected memories exempt from relevance-based forgetting)
+            if not is_protected and relevance_score.total_score < self.relevance_threshold:
                 forgetting_reasons.append("low_relevance")
                 archive_priority = min(archive_priority, 2)  # Medium priority
 
@@ -166,18 +166,17 @@ class ControlledForgettingEngine(ConsolidationBase):
                 quality_score = memory.quality_score
 
                 if quality_score >= 0.7:
-                    # High quality: Keep longer
                     threshold_days = MCP_QUALITY_RETENTION_HIGH
                 elif quality_score >= 0.5:
-                    # Medium quality: Standard retention
                     threshold_days = MCP_QUALITY_RETENTION_MEDIUM
                 else:
-                    # Low quality: Aggressive archival
-                    # Scale between min and max based on quality score
                     threshold_days = int(
                         MCP_QUALITY_RETENTION_LOW_MIN +
                         (quality_score / 0.5) * (MCP_QUALITY_RETENTION_LOW_MAX - MCP_QUALITY_RETENTION_LOW_MIN)
                     )
+
+                if is_protected:
+                    threshold_days *= MCP_QUALITY_RETENTION_PROTECTED_MULTIPLIER
 
                 if days_since_access > threshold_days:
                     forgetting_reasons.append("old_access")
