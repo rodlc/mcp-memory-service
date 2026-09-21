@@ -1435,14 +1435,22 @@ SOLUTIONS:
 
         The memory is marked as deleted but retained for sync conflict resolution.
         Use purge_deleted() to permanently remove old tombstones.
-        Protected memories (access_count > 50 or tagged milestone/critical) require force=True.
+        Protected memories require force=True:
+        - tagged milestone/critical
+        - access_count > 50
+        - curated content prefix ([convention], [reference], etc.)
         """
+        _CURATED_PREFIXES = (
+            "[convention]", "[reference]", "[procedural]",
+            "[decision]", "[pattern]", "[template]", "[macro-note]",
+        )
+
         try:
             if not self.conn:
                 return False, "Database not initialized"
 
             cursor = self.conn.execute(
-                'SELECT id, tags, metadata FROM memories WHERE content_hash = ? AND deleted_at IS NULL',
+                'SELECT id, tags, metadata, content FROM memories WHERE content_hash = ? AND deleted_at IS NULL',
                 (content_hash,)
             )
             row = cursor.fetchone()
@@ -1450,7 +1458,7 @@ SOLUTIONS:
             if not row:
                 return False, f"Memory with hash {content_hash} not found"
 
-            memory_id, tags_str, metadata_str = row
+            memory_id, tags_str, metadata_str, content = row
 
             if not force:
                 protected_tags = {"milestone", "critical"}
@@ -1467,6 +1475,9 @@ SOLUTIONS:
                         pass
                 if access_count > 50:
                     return False, f"Protected memory (access_count={access_count} > 50). Use force=True to archive."
+
+                if content and content.lower().lstrip().startswith(_CURATED_PREFIXES):
+                    return False, f"Protected memory (curated: {content[:40]}...). Use force=True to archive."
 
             self.conn.execute('DELETE FROM memory_embeddings WHERE rowid = ?', (memory_id,))
             cursor = self.conn.execute(
