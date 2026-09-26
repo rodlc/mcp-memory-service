@@ -59,6 +59,7 @@ class MCPTool(BaseModel):
     name: str
     description: str
     inputSchema: Dict[str, Any]
+    annotations: Optional[Dict[str, Any]] = None
 
 
 # Define MCP tools available
@@ -80,6 +81,7 @@ MCP_TOOLS = [
     ),
     MCPTool(
         name="retrieve_memory", 
+        annotations={"readOnlyHint": True},
         description="Search and retrieve memories using semantic similarity",
         inputSchema={
             "type": "object",
@@ -93,6 +95,7 @@ MCP_TOOLS = [
     ),
     MCPTool(
         name="recall_memory",
+        annotations={"readOnlyHint": True},
         description="Retrieve memories using natural language time expressions and optional semantic search",
         inputSchema={
             "type": "object",
@@ -105,6 +108,7 @@ MCP_TOOLS = [
     ),
     MCPTool(
         name="search_by_tag",
+        annotations={"readOnlyHint": True},
         description="Search memories by specific tags",
         inputSchema={
             "type": "object", 
@@ -128,6 +132,7 @@ MCP_TOOLS = [
     ),
     MCPTool(
         name="check_database_health",
+        annotations={"readOnlyHint": True},
         description="Check the health and status of the memory database",
         inputSchema={
             "type": "object",
@@ -136,6 +141,7 @@ MCP_TOOLS = [
     ),
     MCPTool(
         name="list_memories",
+        annotations={"readOnlyHint": True},
         description="List memories with pagination and optional filtering",
         inputSchema={
             "type": "object",
@@ -180,7 +186,7 @@ async def mcp_endpoint(
             response = MCPResponse(
                 id=request.id,
                 result={
-                    "tools": [tool.model_dump() for tool in MCP_TOOLS]
+                    "tools": [tool.model_dump(exclude_none=True) for tool in MCP_TOOLS]
                 }
             )
             return JSONResponse(content=response.model_dump(exclude_none=True))
@@ -406,7 +412,7 @@ async def list_mcp_tools(
 ):
     """List available MCP tools for discovery."""
     return {
-        "tools": [tool.dict() for tool in MCP_TOOLS],
+        "tools": [tool.model_dump(exclude_none=True) for tool in MCP_TOOLS],
         "protocol": "mcp",
         "version": "1.0"
     }
