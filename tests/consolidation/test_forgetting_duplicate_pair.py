@@ -132,9 +132,9 @@ class TestDuplicateSurvivorInRealStorage:
             # Oldest first, so the survivor-choice on a score tie is exercised too.
             for days_old, content in enumerate(reversed(contents), start=1):
                 memory = _mem(content, generate_content_hash(content), days_old=days_old)
-                # skip_semantic_dedup: the bug's precondition is near-duplicates that
+                # No store-time semantic dedup in this fork: the bug's precondition is near-duplicates that
                 # are already in storage (accumulated outside the dedup time window).
-                success, message = await storage.store(memory, skip_semantic_dedup=True)
+                success, message = await storage.store(memory)
                 assert success, message
 
             consolidator = DreamInspiredConsolidator(storage, consolidation_config)
