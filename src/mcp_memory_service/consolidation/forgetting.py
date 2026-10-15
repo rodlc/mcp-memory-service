@@ -197,8 +197,8 @@ class ControlledForgettingEngine(ConsolidationBase):
                     can_be_deleted = True
                     archive_priority = 1
             
-            # Content quality checks
-            if self._is_low_quality_content(memory):
+            # Content quality checks (protected exempt: long documents fall under the unique-word ratio)
+            if not is_protected and self._is_low_quality_content(memory):
                 forgetting_reasons.append("low_quality")
                 archive_priority = min(archive_priority, 2)
             

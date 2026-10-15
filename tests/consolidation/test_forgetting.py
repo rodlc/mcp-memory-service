@@ -261,7 +261,36 @@ class TestControlledForgettingEngine:
         for memory in test_memories:
             is_low_quality = forgetting_engine._is_low_quality_content(memory)
             assert is_low_quality is True
-    
+
+    @pytest.mark.asyncio
+    async def test_protected_long_document_is_not_low_quality_candidate(self, forgetting_engine):
+        """Long documents repeat words below the 50% unique-word ratio; protected ones must survive."""
+        now = datetime.now()
+        long_doc = Memory(
+            content="## Projects overview\n" + "\n".join(f"- project {i} status active owner rod" for i in range(40)),
+            content_hash="long_convention",
+            tags=["convention", "projects"],
+            embedding=[0.1] * 320,
+            created_at=now.timestamp(),
+            updated_at=now.timestamp()
+        )
+        score = RelevanceScore(
+            memory_hash="long_convention",
+            total_score=0.9,
+            base_importance=1.0,
+            decay_factor=1.0,
+            connection_boost=1.0,
+            access_boost=1.0,
+            metadata={}
+        )
+
+        assert forgetting_engine._is_low_quality_content(long_doc) is True
+        candidates = await forgetting_engine._identify_forgetting_candidates(
+            [long_doc], {"long_convention": score}, {}, "monthly"
+        )
+
+        assert candidates == []
+
     @pytest.mark.asyncio
     async def test_duplicate_detection(self, forgetting_engine, sample_memories):
         """Test detection of potential duplicate content."""
