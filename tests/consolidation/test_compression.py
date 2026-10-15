@@ -439,9 +439,32 @@ class TestSemanticCompressionEngine:
         
         # Should handle gracefully without crashing
         temporal_span = compression_engine._calculate_temporal_span(memories)
-        
+
         # Memory model auto-sets timestamps, so these will be actual values
         assert temporal_span["start_time"] is not None
         assert temporal_span["end_time"] is not None
         assert temporal_span["span_days"] >= 0
         assert isinstance(temporal_span["span_description"], str)
+
+    @pytest.mark.asyncio
+    async def test_protected_memories_stay_out_of_compression(self, compression_engine, sample_cluster_with_memories):
+        """Compression sources are archived with force=True, which bypasses the protected-tag guard."""
+        cluster, memories = sample_cluster_with_memories
+        memories[0].tags.append("convention")
+        memories[3].tags.append("reference")
+
+        results = await compression_engine.process([cluster], memories)
+
+        assert len(results) == 1
+        assert results[0].compressed_memory.metadata["source_memory_hashes"] == ["hash2", "hash3"]
+        assert results[0].source_memory_count == 2
+
+    @pytest.mark.asyncio
+    async def test_cluster_left_with_one_unprotected_memory_is_skipped(self, compression_engine, sample_cluster_with_memories):
+        cluster, memories = sample_cluster_with_memories
+        for memory in memories[:3]:
+            memory.tags.append("important")
+
+        results = await compression_engine.process([cluster], memories)
+
+        assert results == []

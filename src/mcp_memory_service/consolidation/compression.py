@@ -73,7 +73,8 @@ class SemanticCompressionEngine(ConsolidationBase):
             # Get memories for this cluster
             cluster_memories = []
             for hash_val in cluster.memory_hashes:
-                if hash_val in memory_lookup:
+                # Sources get archived with force=True after compression, past the protected-tag guard
+                if hash_val in memory_lookup and not self._is_protected_memory(memory_lookup[hash_val]):
                     cluster_memories.append(memory_lookup[hash_val])
             
             if not cluster_memories:
